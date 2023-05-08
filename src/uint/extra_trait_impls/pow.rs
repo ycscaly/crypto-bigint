@@ -6,15 +6,24 @@ use crate::{
 use crate::{Pow, PowBoundedExp};
 
 macro_rules! impl_pow_cross_sizes {
-    (($first_type:ident, $first_bits:expr), ($(($second_type:ident, $second_bits:expr, $parts:expr)),+ $(,)?)) => {
+    (($first_type:ident, $first_bits:expr), ($(($second_type:ident, $second_bits:expr)),+ $(,)?)) => {
         $(
-            impl Pow<$second_type> for $first_type {
-                fn pow(&self, exponent: &$second_type) -> $first_type {
-                    let mut exponent_parts = [$first_type::ZERO; $parts];
-                    for i in 0..($parts - 1) {
+            impl Pow<$second_type> for DynResidue<{nlimbs!($first_bits)}> {
+                fn pow(&self, exponent: &$second_type) -> DynResidue<{nlimbs!($first_bits)}> {
+                    let d = $second_bits / $first_bits;
+                    let r = $second_bits % $first_bits;
+
+                    let parts = if r > 0 {
+                        d + 1
+                    } else {
+                        d
+                    };
+
+                    let mut i = 0;
+                    let mut res = DynResidue<{nlimbs!($first_bits)}>::one(self.params());
+                    while i < d {
                         let mut limbs = [Limb::ZERO; nlimbs!($first_bits)];
                         let mut j = 0;
-                        let part_bits =
 
                         while j < nlimbs!($first_bits) && j < (nlimbs!($second_bits) - i*nlimbs!($first_bits)) {
                             limbs[j] = exponent.limbs[i*nlimbs!($first_bits) + j];
@@ -23,11 +32,12 @@ macro_rules! impl_pow_cross_sizes {
 
                         let part: $first_type = Uint { limbs };
 
+                        let x = self.pow(&part);
+                        let res = (res * (h_hat.pow(&U4096::MAX)) * h_hat).retrieve(); // TODO: *=
 
+                        i += 1;
                     }
-
-
-                }
+               }
             }
 
             // impl Mul<&$second_type> for $first_type  {

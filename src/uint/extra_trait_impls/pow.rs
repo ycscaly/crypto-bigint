@@ -100,3 +100,65 @@ impl_pow_cross_sizes! {
         (U320, 320)
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::modular::runtime_mod::{DynResidue, DynResidueParams};
+    use crate::{Pow, U128, U192, U256, U320};
+
+    #[test]
+    fn pow_zero_and_one_cross_sizes() {
+        let params = DynResidueParams::new(&U128::MAX);
+        let zero = DynResidue::zero(params);
+        let one = DynResidue::one(params);
+
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U192>>::pow(&zero, &U192::ZERO).retrieve(),
+            U128::ONE
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U256>>::pow(&zero, &U256::ZERO).retrieve(),
+            U128::ONE
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U320>>::pow(&zero, &U320::ZERO).retrieve(),
+            U128::ONE
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U192>>::pow(&zero, &U192::ONE).retrieve(),
+            U128::ZERO
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U256>>::pow(&zero, &U256::ONE).retrieve(),
+            U128::ZERO
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U320>>::pow(&zero, &U320::ONE).retrieve(),
+            U128::ZERO
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U192>>::pow(&one, &U192::ZERO).retrieve(),
+            U128::ONE
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U256>>::pow(&one, &U256::ZERO).retrieve(),
+            U128::ONE
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U320>>::pow(&one, &U320::ZERO).retrieve(),
+            U128::ONE
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U192>>::pow(&one, &U192::ONE).retrieve(),
+            U128::ONE
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U256>>::pow(&one, &U256::ONE).retrieve(),
+            U128::ONE
+        );
+        assert_eq!(
+            <DynResidue::<{ U128::LIMBS }> as Pow<U320>>::pow(&one, &U320::ONE).retrieve(),
+            U128::ONE
+        );
+    }
+}

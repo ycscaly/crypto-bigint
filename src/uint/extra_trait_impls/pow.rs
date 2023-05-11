@@ -7,7 +7,7 @@ macro_rules! impl_pow_cross_sizes_multiple {
             impl Pow<$second_type> for DynResidue<{nlimbs!($first_bits)}> {
                 fn pow(&self, exponent: &$second_type) -> DynResidue<{nlimbs!($first_bits)}> {
                     let mut i = 0;
-                    let mut shifted_self = self.clone();
+                    let mut shifted_base = self.clone();
                     let mut res = DynResidue::<{nlimbs!($first_bits)}>::one(self.params().clone());
 
                     while i < $second_bits / $first_bits {
@@ -21,13 +21,13 @@ macro_rules! impl_pow_cross_sizes_multiple {
 
                         let part: $first_type = Uint { limbs };
 
-                        res *= shifted_self.pow(&part);
+                        res *= shifted_base.pow(&part);
                         i += 1;
 
                         if i == $second_bits / $first_bits {
                             break;
                         } else {
-                            shifted_self = shifted_self.pow(&$first_type::MAX) * shifted_self; // Shift by Self::bits
+                            shifted_base = shifted_base.pow(&$first_type::MAX) * shifted_base; // Shift by Self::bits
                         }
                     }
 
@@ -44,7 +44,7 @@ macro_rules! impl_pow_cross_sizes {
             impl Pow<$second_type> for DynResidue<{nlimbs!($first_bits)}> {
                 fn pow(&self, exponent: &$second_type) -> DynResidue<{nlimbs!($first_bits)}> {
                     let mut i = 0;
-                    let mut shifted_self = self.clone();
+                    let mut shifted_base = self.clone();
                     let mut res = DynResidue::<{nlimbs!($first_bits)}>::one(self.params().clone());
 
                     while i < $second_bits / $first_bits {
@@ -56,10 +56,9 @@ macro_rules! impl_pow_cross_sizes {
                             j += 1;
                         }
 
-                        let part: $first_type = Uint { limbs };
-
-                        res *= shifted_self.pow(&part);
-                        shifted_self = shifted_self.pow(&$first_type::MAX) * shifted_self; // Shift by Self::bits
+                        let exponent_i: $first_type = Uint { limbs }; // The ith part of the exponent
+                        res *= shifted_base.pow(&exponent_i);
+                        shifted_base = shifted_base.pow(&$first_type::MAX) * shifted_base; // Shift by Self::bits
 
                         i += 1;
                     }
@@ -74,7 +73,7 @@ macro_rules! impl_pow_cross_sizes {
 
                     let part: $first_type = Uint { limbs }.into();
 
-                    res *= shifted_self.pow_bounded_exp(
+                    res *= shifted_base.pow_bounded_exp(
                         &part,
                         $second_bits % $first_bits,
                     );

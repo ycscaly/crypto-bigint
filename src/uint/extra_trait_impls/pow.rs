@@ -10,22 +10,15 @@ macro_rules! impl_pow_cross_sizes {
         $(
             impl Pow<$second_type> for DynResidue<{nlimbs!($first_bits)}> {
                 fn pow(&self, exponent: &$second_type) -> DynResidue<{nlimbs!($first_bits)}> {
-                    let d = $second_bits / $first_bits;
-                    let r = $second_bits % $first_bits;
-
-                    let parts = if r > 0 {
-                        d + 1
-                    } else {
-                        d
-                    };
-
                     let mut i = 0;
+                    let mut shifted_self = self;
                     let mut res = DynResidue<{nlimbs!($first_bits)}>::one(self.params());
-                    while i < d {
+
+                    while i < $second_bits / $first_bits {
                         let mut limbs = [Limb::ZERO; nlimbs!($first_bits)];
                         let mut j = 0;
 
-                        while j < nlimbs!($first_bits) && j < (nlimbs!($second_bits) - i*nlimbs!($first_bits)) {
+                        while j < nlimbs!($first_bits) {
                             limbs[j] = exponent.limbs[i*nlimbs!($first_bits) + j];
                             j += 1;
                         }
@@ -35,8 +28,30 @@ macro_rules! impl_pow_cross_sizes {
                         let x = self.pow(&part);
                         let res = (res * (h_hat.pow(&U4096::MAX)) * h_hat).retrieve(); // TODO: *=
 
+                        res *= shifted_self.pow(&part);
+                        shifted_self = shifted_self.pow(&Self::MAX) * shifted_self; // Shift by Self::bits
+
                         i += 1;
                     }
+
+                    if $second_bits % $first_bits > 0 {
+                        let mut limbs = [Limb::ZERO; nlimbs!($second_bits % $first_bits)];
+                        let mut j = 0;
+
+                        while j < nlimbs!($second_bits % $first_bits) {
+                            limbs[j] = exponent.limbs[i*nlimbs!($first_bits) + j];
+                            j += 1;
+                        }
+
+                        let part: $first_type = Uint { limbs };
+
+                        let hi = shifted_self.pow_bounded_exp(
+                            &part,
+                            $second_bits % $first_bits,
+                        );
+                    }
+
+                    res
                }
             }
 

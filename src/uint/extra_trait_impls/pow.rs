@@ -38,6 +38,12 @@ macro_rules! impl_pow_cross_sizes_multiple {
                     res
                }
             }
+
+            impl Pow<$first_type> for DynResidue<{nlimbs!($second_bits)}> {
+                fn pow(&self, exponent: &$first_type) -> DynResidue<{nlimbs!($second_bits)}> {
+                    self.pow_bounded_exp(&exponent.into(), $first_bits)
+                }
+            }
         )+
     };
 }
@@ -84,6 +90,12 @@ macro_rules! impl_pow_cross_sizes {
 
                     res
                }
+            }
+
+            impl Pow<$first_type> for DynResidue<{nlimbs!($second_bits)}> {
+                fn pow(&self, exponent: &$first_type) -> DynResidue<{nlimbs!($second_bits)}> {
+                    self.pow_bounded_exp(&exponent.into(), $first_bits)
+                }
             }
         )+
     };
@@ -602,7 +614,7 @@ impl_pow_cross_sizes! {
 #[cfg(test)]
 mod tests {
     use crate::modular::runtime_mod::{DynResidue, DynResidueParams};
-    use crate::{NonZero, Pow, U128, U192, U256, U320, U384, U4096, U4352};
+    use crate::{NonZero, Pow, U128, U192, U256, U320, U4096, U4352};
 
     #[test]
     fn pow_zero_and_one_cross_sizes() {

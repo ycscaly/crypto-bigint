@@ -397,7 +397,7 @@ impl_concat! {
     (U4096, 4096),
     (U4224, 4224),
     (U4352, 4352),
-    (U4544, 4544),
+    (U4544, 4544)
 }
 
 // TODO(tarcieri): use `const_evaluatable_checked` when stable to make generic around bits.

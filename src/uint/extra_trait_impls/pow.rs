@@ -49,6 +49,12 @@ macro_rules! impl_pow_bounded_exp {
                     res
                }
             }
+
+            impl PowBoundedExp<$first_type> for DynResidue<{nlimbs!($second_bits)}> {
+                fn pow_bounded_exp(&self, exponent: &$first_type, exponent_bits: usize) -> DynResidue<{nlimbs!($second_bits)}> {
+                    self.pow_bounded_exp(&exponent.into(), exponent_bits)
+                }
+            }
         )+
     };
 }

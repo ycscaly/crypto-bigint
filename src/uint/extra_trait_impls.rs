@@ -4,6 +4,8 @@ mod concat;
 mod convert;
 #[macro_use]
 mod mul;
+#[macro_use]
+mod pow;
 
 use crate::{
     Concat, Limb, Uint, U1024, U128, U1280, U1536, U16384, U1792, U192, U2048, U256, U3072, U320,

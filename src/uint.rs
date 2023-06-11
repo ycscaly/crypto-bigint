@@ -1,4 +1,4 @@
-//! Big unsigned integers.
+//! Stack-allocated big unsigned integers.
 
 #![allow(
     clippy::needless_range_loop,
@@ -60,7 +60,7 @@ use serdect::serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "zeroize")]
 use zeroize::DefaultIsZeroes;
 
-/// Big unsigned integer.
+/// Stack-allocated big unsigned integer.
 ///
 /// Generic over the given number of `LIMBS`
 ///
@@ -365,9 +365,10 @@ impl_uint_aliases! {
     (U4096, 4096, "4096-bit"),
     (U4224, 4224, "4224-bit"),
     (U4352, 4352, "4352-bit"),
-    (U4544, 4544, "4544-bit"),
     (U6144, 6144, "6144-bit"),
-    (U8192, 8192, "8192-bit")
+    (U8192, 8192, "8192-bit"),
+    (U16384, 16384, "16384-bit"),
+    (U32768, 32768, "32768-bit")
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -397,7 +398,8 @@ impl_concat! {
     (U4096, 4096),
     (U4224, 4224),
     (U4352, 4352),
-    (U4544, 4544)
+    (U8192, 8192),
+    (U16384, 16384)
 }
 
 // TODO(tarcieri): use `const_evaluatable_checked` when stable to make generic around bits.
@@ -419,9 +421,10 @@ impl_split! {
     (U4096, 4096),
     (U4224, 4224),
     (U4352, 4352),
-    (U4544, 4544),
     (U6144, 6144),
-    (U8192, 8192)
+    (U8192, 8192),
+    (U16384, 16384),
+    (U32768, 32768)
 }
 
 impl_mul! {
@@ -441,7 +444,9 @@ impl_mul! {
     (U1792, 1792),
     (U2048, 2048),
     (U3072, 3072),
-    (U4096, 4096)
+    (U4096, 4096),
+    (U8192, 8192),
+    (U16384, 16384)
 }
 
 #[cfg(feature = "extra-sizes")]

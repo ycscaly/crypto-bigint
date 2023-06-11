@@ -1,64 +1,21 @@
 use crate::modular::runtime_mod::DynResidue;
 
 use crate::{
-    Limb, Pow, Uint, U1024, U128, U1280, U1536, U16384, U1792, U192, U2048, U256, U3072, U320,
-    U32768, U3584, U384, U4096, U4224, U4352, U448, U512, U576, U6144, U64, U640, U768, U8192,
-    U896,
+    Limb, PowBoundedExp, Uint, U1024, U128, U1280, U1536, U16384, U1792, U192, U2048, U256, U3072,
+    U320, U32768, U3584, U384, U4096, U4224, U4352, U448, U512, U576, U6144, U64, U640, U768,
+    U8192, U896,
 };
 
-macro_rules! impl_pow_cross_sizes_multiple {
+macro_rules! impl_pow_bounded_exp {
     (($first_type:ident, $first_bits:expr), ($(($second_type:ident, $second_bits:expr)),+ $(,)?)) => {
         $(
-            impl Pow<$second_type> for DynResidue<{nlimbs!($first_bits)}> {
-                fn pow(&self, exponent: &$second_type) -> DynResidue<{nlimbs!($first_bits)}> {
+            impl PowBoundedExp<$second_type> for DynResidue<{nlimbs!($first_bits)}> {
+                fn pow_bounded_exp(&self, exponent: &$second_type, exponent_bits: usize) -> DynResidue<{nlimbs!($first_bits)}> {
                     let mut i = 0;
                     let mut shifted_base = self.clone();
                     let mut res = DynResidue::<{nlimbs!($first_bits)}>::one(self.params().clone());
 
-                    while i < $second_bits / $first_bits {
-                        let mut limbs = [Limb::ZERO; nlimbs!($first_bits)];
-                        let mut j = 0;
-
-                        while j < nlimbs!($first_bits) {
-                            limbs[j] = exponent.limbs[i*nlimbs!($first_bits) + j];
-                            j += 1;
-                        }
-
-                        let part: $first_type = Uint { limbs };
-
-                        res *= shifted_base.pow(&part);
-                        i += 1;
-
-                        if i == $second_bits / $first_bits {
-                            break;
-                        } else {
-                            shifted_base = shifted_base.pow(&$first_type::MAX) * shifted_base; // Shift by Self::bits
-                        }
-                    }
-
-                    res
-               }
-            }
-
-            impl Pow<$first_type> for DynResidue<{nlimbs!($second_bits)}> {
-                fn pow(&self, exponent: &$first_type) -> DynResidue<{nlimbs!($second_bits)}> {
-                    self.pow_bounded_exp(&exponent.into(), $first_bits)
-                }
-            }
-        )+
-    };
-}
-
-macro_rules! impl_pow_cross_sizes {
-    (($first_type:ident, $first_bits:expr), ($(($second_type:ident, $second_bits:expr)),+ $(,)?)) => {
-        $(
-            impl Pow<$second_type> for DynResidue<{nlimbs!($first_bits)}> {
-                fn pow(&self, exponent: &$second_type) -> DynResidue<{nlimbs!($first_bits)}> {
-                    let mut i = 0;
-                    let mut shifted_base = self.clone();
-                    let mut res = DynResidue::<{nlimbs!($first_bits)}>::one(self.params().clone());
-
-                    while i < $second_bits / $first_bits {
+                    while i < exponent_bits / $first_bits {
                         let mut limbs = [Limb::ZERO; nlimbs!($first_bits)];
                         let mut j = 0;
 
@@ -77,7 +34,7 @@ macro_rules! impl_pow_cross_sizes {
                     let mut limbs = [Limb::ZERO; nlimbs!($first_bits)];
                     let mut j = 0;
 
-                    while j < nlimbs!($second_bits % $first_bits) {
+                    while j < nlimbs!(exponent_bits % $first_bits) {
                         limbs[j] = exponent.limbs[i*nlimbs!($first_bits) + j];
                         j += 1;
                     }
@@ -86,23 +43,17 @@ macro_rules! impl_pow_cross_sizes {
 
                     res *= shifted_base.pow_bounded_exp(
                         &exponent_i,
-                        $second_bits % $first_bits,
+                        exponent_bits % $first_bits,
                     );
 
                     res
                }
             }
-
-            impl Pow<$first_type> for DynResidue<{nlimbs!($second_bits)}> {
-                fn pow(&self, exponent: &$first_type) -> DynResidue<{nlimbs!($second_bits)}> {
-                    self.pow_bounded_exp(&exponent.into(), $first_bits)
-                }
-            }
         )+
     };
 }
 
-impl_pow_cross_sizes_multiple! {
+impl_pow_bounded_exp! {
     (U64, 64),
     (
         (U128, 128),
@@ -133,259 +84,105 @@ impl_pow_cross_sizes_multiple! {
     )
 }
 
-impl_pow_cross_sizes_multiple! {
-    (U128, 128),
-    (
-        (U256, 256),
-        (U384, 384),
-        (U512, 512),
-        (U640, 640),
-        (U768, 768),
-        (U896, 896),
-        (U1024, 1024),
-        (U1280, 1280),
-        (U1536, 1536),
-        (U1792, 1792),
-        (U2048, 2048),
-        (U3072, 3072),
-        (U3584, 3584),
-        (U4096, 4096),
-        (U4224, 4224),
-        (U4352, 4352),
-        (U6144, 6144),
-        (U8192, 8192),
-        (U16384, 16384),
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U192, 192),
-    (
-        (U384, 384),
-        (U576, 576),
-        (U768, 768),
-        (U1536, 1536),
-        (U3072, 3072),
-        (U4224, 4224),
-        (U6144, 6144),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U256, 256),
-    (
-        (U512, 512),
-        (U768, 768),
-        (U1024, 1024),
-        (U1280, 1280),
-        (U1536, 1536),
-        (U1792, 1792),
-        (U2048, 2048),
-        (U3072, 3072),
-        (U3584, 3584),
-        (U4096, 4096),
-        (U4352, 4352),
-        (U6144, 6144),
-        (U8192, 8192),
-        (U16384, 16384),
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U320, 320),
-    (
-        (U640, 640),
-        (U1280, 1280),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U384, 384),
-    (
-        (U768, 768),
-        (U1536, 1536),
-        (U3072, 3072),
-        (U4224, 4224),
-        (U6144, 6144),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U448, 448),
-    (
-        (U896, 896),
-        (U1792, 1792),
-        (U3584, 3584),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U512, 512),
-    (
-        (U1024, 1024),
-        (U1536, 1536),
-        (U2048, 2048),
-        (U3072, 3072),
-        (U3584, 3584),
-        (U4096, 4096),
-        (U6144, 6144),
-        (U8192, 8192),
-        (U16384, 16384),
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U640, 640),
-    (
-        (U1280, 1280),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U768, 768),
-    (
-        (U1536, 1536),
-        (U3072, 3072),
-        (U6144, 6144),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U896, 896),
-    (
-        (U1792, 1792),
-        (U3584, 3584),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U1024, 1024),
-    (
-        (U2048, 2048),
-        (U3072, 3072),
-        (U4096, 4096),
-        (U6144, 6144),
-        (U8192, 8192),
-        (U16384, 16384),
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U1536, 1536),
-    (
-        (U3072, 3072),
-        (U6144, 6144),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U1792, 1792),
-    (
-        (U3584, 3584),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U2048, 2048),
-    (
-        (U4096, 4096),
-        (U6144, 6144),
-        (U8192, 8192),
-        (U16384, 16384),
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U3072, 3072),
-    (
-        (U6144, 6144),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U4096, 4096),
-    (
-        (U8192, 8192),
-        (U16384, 16384),
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U8192, 8192),
-    (
-        (U16384, 16384),
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes_multiple! {
-    (U16384, 16384),
-    (
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U128, 128),
     (
         (U192, 192),
-        (U320, 320),
-        (U448, 448),
-        (U576, 576),
-    )
-}
-
-impl_pow_cross_sizes! {
-    (U192, 192),
-    (
         (U256, 256),
         (U320, 320),
+        (U384, 384),
         (U448, 448),
         (U512, 512),
+        (U576, 576),
         (U640, 640),
+        (U768, 768),
         (U896, 896),
         (U1024, 1024),
         (U1280, 1280),
+        (U1536, 1536),
         (U1792, 1792),
         (U2048, 2048),
+        (U3072, 3072),
         (U3584, 3584),
         (U4096, 4096),
+        (U4224, 4224),
         (U4352, 4352),
+        (U6144, 6144),
         (U8192, 8192),
         (U16384, 16384),
         (U32768, 32768),
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
+    (U192, 192),
+    (
+        (U256, 256),
+        (U320, 320),
+        (U384, 384),
+        (U448, 448),
+        (U512, 512),
+        (U576, 576),
+        (U640, 640),
+        (U768, 768),
+        (U896, 896),
+        (U1024, 1024),
+        (U1280, 1280),
+        (U1536, 1536),
+        (U1792, 1792),
+        (U2048, 2048),
+        (U3072, 3072),
+        (U3584, 3584),
+        (U4096, 4096),
+        (U4224, 4224),
+        (U4352, 4352),
+        (U6144, 6144),
+        (U8192, 8192),
+        (U16384, 16384),
+        (U32768, 32768),
+    )
+}
+
+impl_pow_bounded_exp! {
     (U256, 256),
     (
         (U320, 320),
         (U384, 384),
         (U448, 448),
+        (U512, 512),
         (U576, 576),
         (U640, 640),
+        (U768, 768),
         (U896, 896),
+        (U1024, 1024),
+        (U1280, 1280),
+        (U1536, 1536),
+        (U1792, 1792),
+        (U2048, 2048),
+        (U3072, 3072),
+        (U3584, 3584),
+        (U4096, 4096),
         (U4224, 4224),
+        (U4352, 4352),
+        (U6144, 6144),
+        (U8192, 8192),
+        (U16384, 16384),
+        (U32768, 32768),
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U320, 320),
     (
         (U384, 384),
         (U448, 448),
         (U512, 512),
         (U576, 576),
+        (U640, 640),
         (U768, 768),
         (U896, 896),
         (U1024, 1024),
+        (U1280, 1280),
         (U1536, 1536),
         (U1792, 1792),
         (U2048, 2048),
@@ -401,39 +198,22 @@ impl_pow_cross_sizes! {
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U384, 384),
     (
         (U448, 448),
         (U512, 512),
         (U576, 576),
         (U640, 640),
+        (U768, 768),
         (U896, 896),
         (U1024, 1024),
         (U1280, 1280),
+        (U1536, 1536),
         (U1792, 1792),
         (U2048, 2048),
-        (U3584, 3584),
-        (U4096, 4096),
-        (U4352, 4352),
-        (U8192, 8192),
-        (U16384, 16384),
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes! {
-    (U448, 448),
-    (
-        (U512, 512),
-        (U576, 576),
-        (U640, 640),
-        (U768, 768),
-        (U1024, 1024),
-        (U1280, 1280),
-        (U1536, 1536),
-        (U2048, 2048),
         (U3072, 3072),
+        (U3584, 3584),
         (U4096, 4096),
         (U4224, 4224),
         (U4352, 4352),
@@ -444,21 +224,56 @@ impl_pow_cross_sizes! {
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
+    (U448, 448),
+    (
+        (U512, 512),
+        (U576, 576),
+        (U640, 640),
+        (U768, 768),
+        (U896, 896),
+        (U1024, 1024),
+        (U1280, 1280),
+        (U1536, 1536),
+        (U1792, 1792),
+        (U2048, 2048),
+        (U3072, 3072),
+        (U3584, 3584),
+        (U4096, 4096),
+        (U4224, 4224),
+        (U4352, 4352),
+        (U6144, 6144),
+        (U8192, 8192),
+        (U16384, 16384),
+        (U32768, 32768),
+    )
+}
+
+impl_pow_bounded_exp! {
     (U512, 512),
     (
         (U576, 576),
         (U640, 640),
         (U768, 768),
         (U896, 896),
+        (U1024, 1024),
         (U1280, 1280),
+        (U1536, 1536),
         (U1792, 1792),
+        (U2048, 2048),
+        (U3072, 3072),
+        (U3584, 3584),
+        (U4096, 4096),
         (U4224, 4224),
         (U4352, 4352),
+        (U6144, 6144),
+        (U8192, 8192),
+        (U16384, 16384),
+        (U32768, 32768),
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U576, 576),
     (
         (U640, 640),
@@ -481,12 +296,13 @@ impl_pow_cross_sizes! {
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U640, 640),
     (
         (U768, 768),
         (U896, 896),
         (U1024, 1024),
+        (U1280, 1280),
         (U1536, 1536),
         (U1792, 1792),
         (U2048, 2048),
@@ -502,32 +318,17 @@ impl_pow_cross_sizes! {
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U768, 768),
     (
         (U896, 896),
         (U1024, 1024),
         (U1280, 1280),
+        (U1536, 1536),
         (U1792, 1792),
         (U2048, 2048),
-        (U3584, 3584),
-        (U4096, 4096),
-        (U4224, 4224),
-        (U4352, 4352),
-        (U8192, 8192),
-        (U16384, 16384),
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes! {
-    (U896, 896),
-    (
-        (U1024, 1024),
-        (U1280, 1280),
-        (U1536, 1536),
-        (U2048, 2048),
         (U3072, 3072),
+        (U3584, 3584),
         (U4096, 4096),
         (U4224, 4224),
         (U4352, 4352),
@@ -538,19 +339,46 @@ impl_pow_cross_sizes! {
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
+    (U896, 896),
+    (
+        (U1024, 1024),
+        (U1280, 1280),
+        (U1536, 1536),
+        (U1792, 1792),
+        (U2048, 2048),
+        (U3072, 3072),
+        (U3584, 3584),
+        (U4096, 4096),
+        (U4224, 4224),
+        (U4352, 4352),
+        (U6144, 6144),
+        (U8192, 8192),
+        (U16384, 16384),
+        (U32768, 32768),
+    )
+}
+
+impl_pow_bounded_exp! {
     (U1024, 1024),
     (
         (U1280, 1280),
         (U1536, 1536),
         (U1792, 1792),
+        (U2048, 2048),
+        (U3072, 3072),
         (U3584, 3584),
+        (U4096, 4096),
         (U4224, 4224),
         (U4352, 4352),
+        (U6144, 6144),
+        (U8192, 8192),
+        (U16384, 16384),
+        (U32768, 32768),
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U1280, 1280),
     (
         (U1536, 1536),
@@ -568,26 +396,13 @@ impl_pow_cross_sizes! {
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U1536, 1536),
     (
         (U1792, 1792),
         (U2048, 2048),
-        (U3584, 3584),
-        (U4096, 4096),
-        (U4224, 4224),
-        (U4352, 4352),
-        (U8192, 8192),
-        (U16384, 16384),
-        (U32768, 32768),
-    )
-}
-
-impl_pow_cross_sizes! {
-    (U1792, 1792),
-    (
-        (U2048, 2048),
         (U3072, 3072),
+        (U3584, 3584),
         (U4096, 4096),
         (U4224, 4224),
         (U4352, 4352),
@@ -598,30 +413,52 @@ impl_pow_cross_sizes! {
     )
 }
 
-impl_pow_cross_sizes! {
-    (U2048, 2048),
+impl_pow_bounded_exp! {
+    (U1792, 1792),
     (
+        (U2048, 2048),
         (U3072, 3072),
-        (U3584, 3584),
-        (U4224, 4224),
-        (U4352, 4352),
-    )
-}
-
-impl_pow_cross_sizes! {
-    (U3072, 3072),
-    (
         (U3584, 3584),
         (U4096, 4096),
         (U4224, 4224),
         (U4352, 4352),
+        (U6144, 6144),
         (U8192, 8192),
         (U16384, 16384),
         (U32768, 32768),
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
+    (U2048, 2048),
+    (
+        (U3072, 3072),
+        (U3584, 3584),
+        (U4096, 4096),
+        (U4224, 4224),
+        (U4352, 4352),
+        (U6144, 6144),
+        (U8192, 8192),
+        (U16384, 16384),
+        (U32768, 32768),
+    )
+}
+
+impl_pow_bounded_exp! {
+    (U3072, 3072),
+    (
+        (U3584, 3584),
+        (U4096, 4096),
+        (U4224, 4224),
+        (U4352, 4352),
+        (U6144, 6144),
+        (U8192, 8192),
+        (U16384, 16384),
+        (U32768, 32768),
+    )
+}
+
+impl_pow_bounded_exp! {
     (U3584, 3584),
     (
         (U4096, 4096),
@@ -634,16 +471,19 @@ impl_pow_cross_sizes! {
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U4096, 4096),
     (
         (U4224, 4224),
         (U4352, 4352),
         (U6144, 6144),
+        (U8192, 8192),
+        (U16384, 16384),
+        (U32768, 32768),
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U4224, 4224),
     (
         (U4352, 4352),
@@ -654,7 +494,7 @@ impl_pow_cross_sizes! {
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U4352, 4352),
     (
         (U6144, 6144),
@@ -664,11 +504,26 @@ impl_pow_cross_sizes! {
     )
 }
 
-impl_pow_cross_sizes! {
+impl_pow_bounded_exp! {
     (U6144, 6144),
     (
         (U8192, 8192),
         (U16384, 16384),
+        (U32768, 32768),
+    )
+}
+
+impl_pow_bounded_exp! {
+    (U8192, 8192),
+    (
+        (U16384, 16384),
+        (U32768, 32768),
+    )
+}
+
+impl_pow_bounded_exp! {
+    (U16384, 16384),
+    (
         (U32768, 32768),
     )
 }

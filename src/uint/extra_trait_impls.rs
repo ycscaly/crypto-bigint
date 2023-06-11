@@ -4,7 +4,6 @@ mod concat;
 mod convert;
 #[macro_use]
 mod mul;
-#[macro_use]
 mod pow;
 
 use crate::{

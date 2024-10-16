@@ -186,13 +186,14 @@ pub use crate::uint::boxed::BoxedUint;
 pub use crate::{
     checked::Checked,
     const_choice::{ConstChoice, ConstCtOption},
-    int::{types::*, *},
+    int::*,
     jacobi::JacobiSymbol,
     limb::{Limb, WideWord, Word},
     non_zero::*,
     odd::*,
     traits::*,
-    uint::{div_limb::Reciprocal, *},
+    uint::div_limb::{Reciprocal, div3by2},
+    uint::*,
     wrapping::Wrapping,
 };
 
@@ -220,6 +221,4 @@ pub mod prelude {
     #[cfg(feature = "hybrid-array")]
     pub use crate::array::{ArrayDecoding, ArrayEncoding};
     pub use crate::traits::*;
-    pub use crate::{   uint::div_limb::{div3by2, Reciprocal},
-                       uint::*,};
 }

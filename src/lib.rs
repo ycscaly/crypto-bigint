@@ -220,4 +220,6 @@ pub mod prelude {
     #[cfg(feature = "hybrid-array")]
     pub use crate::array::{ArrayDecoding, ArrayEncoding};
     pub use crate::traits::*;
+    pub use crate::{   uint::div_limb::{div3by2, Reciprocal},
+                       uint::*,};
 }

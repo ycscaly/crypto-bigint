@@ -64,7 +64,7 @@ impl<const LIMBS: usize> Uint<LIMBS> {
     }
 
     /// Sets the bit at `index` to 0 or 1 depending on the value of `bit_value`.
-    pub(crate) const fn set_bit(self, index: u32, bit_value: ConstChoice) -> Self {
+    pub const fn set_bit(self, index: u32, bit_value: ConstChoice) -> Self {
         let mut result = self;
         result.as_mut_uint_ref().set_bit(index, bit_value);
         result
@@ -72,7 +72,7 @@ impl<const LIMBS: usize> Uint<LIMBS> {
 
     /// Sets the bit at `index` to 0 or 1 depending on the value of `bit_value`,
     /// variable time in `self`.
-    pub(crate) const fn set_bit_vartime(self, index: u32, bit_value: bool) -> Self {
+    pub const fn set_bit_vartime(self, index: u32, bit_value: bool) -> Self {
         let mut result = self;
         result.as_mut_uint_ref().set_bit_vartime(index, bit_value);
         result

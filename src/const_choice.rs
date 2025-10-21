@@ -169,32 +169,32 @@ impl ConstChoice {
     }
 
     #[inline]
-    pub(crate) const fn not(&self) -> Self {
+    pub const fn not(&self) -> Self {
         Self(!self.0)
     }
 
     #[inline]
-    pub(crate) const fn or(&self, other: Self) -> Self {
+    pub const fn or(&self, other: Self) -> Self {
         Self(self.0 | other.0)
     }
 
     #[inline]
-    pub(crate) const fn and(&self, other: Self) -> Self {
+    pub const fn and(&self, other: Self) -> Self {
         Self(self.0 & other.0)
     }
 
     #[inline]
-    pub(crate) const fn xor(&self, other: Self) -> Self {
+    pub const fn xor(&self, other: Self) -> Self {
         Self(self.0 ^ other.0)
     }
 
     #[inline]
-    pub(crate) const fn ne(&self, other: Self) -> Self {
+    pub const fn ne(&self, other: Self) -> Self {
         Self::xor(self, other)
     }
 
     #[inline]
-    pub(crate) const fn eq(&self, other: Self) -> Self {
+    pub const fn eq(&self, other: Self) -> Self {
         Self::ne(self, other).not()
     }
 

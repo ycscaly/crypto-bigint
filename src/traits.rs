@@ -5,7 +5,7 @@ pub use num_traits::{
     WrappingSub,
 };
 
-use crate::{Limb, NonZero, Odd, modular::Retrieve};
+use crate::{Limb, NonZero, Odd, Reciprocal, modular::Retrieve};
 use core::{
     fmt::{self, Debug},
     ops::{
@@ -21,7 +21,6 @@ use subtle::{
 
 #[cfg(feature = "rand_core")]
 use rand_core::{RngCore, TryRngCore};
-use crate::uint::div_limb::Reciprocal;
 
 /// Integers whose representation takes a bounded amount of space.
 pub trait Bounded {

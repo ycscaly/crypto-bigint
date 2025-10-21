@@ -186,14 +186,14 @@ pub use crate::uint::boxed::BoxedUint;
 pub use crate::{
     checked::Checked,
     const_choice::{ConstChoice, ConstCtOption},
-    int::*,
+    int::{*, gcd::{IntXgcdOutput, NonZeroIntXgcdOutput, OddIntXgcdOutput}},
     jacobi::JacobiSymbol,
     limb::{Limb, WideWord, Word},
     non_zero::*,
     odd::*,
     traits::*,
     uint::div_limb::{Reciprocal, div3by2},
-    uint::*,
+    uint::{*, gcd::{OddUintXgcdOutput, NonZeroUintXgcdOutput, UintXgcdOutput}},
     wrapping::Wrapping,
 };
 

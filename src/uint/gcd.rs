@@ -136,7 +136,11 @@ impl<const LIMBS: usize> OddUint<LIMBS> {
     /// Compute the greatest common divisor of `self` and `rhs`.
     #[inline(always)]
     pub const fn gcd_uint(&self, rhs: &Uint<LIMBS>) -> Self {
-        Self::bingcd(self, rhs)
+        if LIMBS == 1 {
+            Self::classic_bingcd(self, rhs)
+        } else {
+            Self::safegcd(self, rhs)
+        }
     }
 
     /// Compute the greatest common divisor of `self` and `rhs`.
@@ -144,7 +148,11 @@ impl<const LIMBS: usize> OddUint<LIMBS> {
     /// Executes in variable time w.r.t. all input parameters.
     #[inline(always)]
     pub const fn gcd_uint_vartime(&self, rhs: &Uint<LIMBS>) -> Self {
-        Self::bingcd_vartime(self, rhs)
+        if LIMBS == 1 {
+            Self::classic_bingcd_vartime(self, rhs)
+        } else {
+            Self::safegcd_vartime(self, rhs)
+        }
     }
 
     /// Compute the greatest common divisor of `self` and `rhs` using the Binary GCD algorithm.

@@ -154,6 +154,32 @@ impl<const LIMBS: usize> Uint<LIMBS> {
         self.div_rem_vartime(rhs).0
     }
 
+
+    /// Computes `self << shift` where `0 <= shift < Limb::BITS`,
+    /// returning the result and the carry.
+    ///
+    /// Note: assumes that `self` only has `limb_num` lowest non-zero limbs.
+    pub const fn shl_limb_vartime(&self, shift: u32, limbs_num: usize) -> (Self, Limb) {
+        if shift == 0 {
+            return (*self, Limb::ZERO);
+        }
+
+        let mut limbs = [Limb::ZERO; LIMBS];
+
+        let lshift = shift;
+        let rshift = Limb::BITS - shift;
+
+        let carry = self.limbs[limbs_num - 1].0 >> rshift;
+        let mut i = limbs_num - 1;
+        while i > 0 {
+            limbs[i] = Limb((self.limbs[i].0 << lshift) | (self.limbs[i - 1].0 >> rshift));
+            i -= 1;
+        }
+        limbs[0] = Limb(self.limbs[0].0 << lshift);
+
+        (Uint::<LIMBS>::new(limbs), Limb(carry))
+    }
+
     /// Perform checked division, returning a [`CtOption`] which `is_some`
     /// only if the rhs != 0.
     ///

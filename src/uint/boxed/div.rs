@@ -293,42 +293,6 @@ impl RemMixed<BoxedUint> for BoxedUint {
     }
 }
 
-/// Computes `limbs << shift` inplace, where `0 <= shift < Limb::BITS`, returning the carry.
-fn shl_limb_vartime(limbs: &mut [Limb], shift: u32) -> Limb {
-    if shift == 0 {
-        return Limb::ZERO;
-    }
-
-    let lshift = shift;
-    let rshift = Limb::BITS - shift;
-    let limbs_num = limbs.len();
-
-    let carry = limbs[limbs_num - 1] >> rshift;
-    for i in (1..limbs_num).rev() {
-        limbs[i] = (limbs[i] << lshift) | (limbs[i - 1] >> rshift);
-    }
-    limbs[0] <<= lshift;
-
-    carry
-}
-
-/// Computes `limbs >> shift` inplace, where `0 <= shift < Limb::BITS`.
-fn shr_limb_vartime(limbs: &mut [Limb], shift: u32) {
-    if shift == 0 {
-        return;
-    }
-
-    let lshift = Limb::BITS - shift;
-    let rshift = shift;
-
-    let limbs_num = limbs.len();
-
-    for i in 0..limbs_num - 1 {
-        limbs[i] = (limbs[i] >> rshift) | (limbs[i + 1] << lshift);
-    }
-    limbs[limbs_num - 1] >>= rshift;
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{DivVartime, Resize, Zero};

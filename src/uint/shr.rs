@@ -177,14 +177,14 @@ impl<const LIMBS: usize> Uint<LIMBS> {
     }
 
     /// Computes `self >> 1` in constant-time.
-    pub const fn shr1(&self) -> Self {
+    pub(crate) const fn shr1(&self) -> Self {
         self.shr1_with_carry().0
     }
 
     /// Computes `self >> 1` in constant-time, returning [`ConstChoice::TRUE`]
     /// if the least significant bit was set, and [`ConstChoice::FALSE`] otherwise.
     #[inline(always)]
-    pub const fn shr1_with_carry(&self) -> (Self, ConstChoice) {
+    pub(crate) const fn shr1_with_carry(&self) -> (Self, ConstChoice) {
         let mut ret = Self::ZERO;
         let mut i = LIMBS;
         let mut carry = Limb::ZERO;
@@ -235,7 +235,7 @@ impl<const LIMBS: usize> Uint<LIMBS> {
     /// returning the result and the carry.
     ///
     /// Panics if `shift >= Limb::BITS`.
-    pub const fn shr_limb(&self, shift: u32) -> (Self, Limb) {
+    pub(crate) const fn shr_limb(&self, shift: u32) -> (Self, Limb) {
         let nz = ConstChoice::from_u32_nonzero(shift);
         self.conditional_shr_limb_nonzero(NonZero(nz.select_u32(1, shift)), nz)
     }

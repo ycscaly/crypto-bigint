@@ -192,7 +192,7 @@ pub use crate::{
     non_zero::*,
     odd::*,
     traits::*,
-    uint::div_limb::{Reciprocal, div3by2},
+    uint::div_limb::div3by2,
     uint::{*, gcd::{OddUintXgcdOutput, NonZeroUintXgcdOutput, UintXgcdOutput}},
     wrapping::Wrapping,
 };

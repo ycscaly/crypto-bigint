@@ -25,7 +25,7 @@ mod div;
 mod div_uint;
 mod encoding;
 mod from;
-mod gcd;
+pub mod gcd;
 mod invert_mod;
 mod mod_symbol;
 mod mul;

@@ -24,7 +24,7 @@ mod sub;
 /// thus provides an abstraction for writing shared implementations.
 #[repr(transparent)]
 #[derive(PartialEq, Eq)]
-pub(crate) struct UintRef(pub [Limb]);
+pub struct UintRef(pub [Limb]);
 
 impl UintRef {
     /// Create a [`UintRef`] reference type from a [`Limb`] slice.

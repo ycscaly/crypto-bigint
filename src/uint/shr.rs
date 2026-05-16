@@ -181,7 +181,7 @@ impl<const LIMBS: usize> Uint<LIMBS> {
     /// Computes `self >> 1` in constant-time.
     #[inline(always)]
     #[must_use]
-    pub(crate) const fn shr1(&self) -> Self {
+    pub const fn shr1(&self) -> Self {
         let mut res = *self;
         res.as_mut_uint_ref().shr1_assign();
         res

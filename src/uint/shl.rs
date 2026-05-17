@@ -171,7 +171,7 @@ impl<const LIMBS: usize> Uint<LIMBS> {
     /// Computes `self << 1` in constant-time.
     #[inline(always)]
     #[must_use]
-    pub(crate) const fn shl1(&self) -> Self {
+    pub const fn shl1(&self) -> Self {
         let mut res = *self;
         res.as_mut_uint_ref().shl1_assign();
         res
@@ -181,10 +181,19 @@ impl<const LIMBS: usize> Uint<LIMBS> {
     /// and a high carry limb.
     #[inline(always)]
     #[must_use]
-    pub(crate) const fn shl1_with_carry(&self, carry: Limb) -> (Self, Limb) {
+    pub const fn shl1_with_carry(&self, carry: Limb) -> (Self, Limb) {
         let mut res = *self;
         let carry = res.as_mut_uint_ref().shl1_assign_with_carry(carry);
         (res, carry)
+    }
+
+    /// Computes `self << 1` in constant-time, returning the shifted result and
+    /// the high carry limb (no carry-in). Equivalent to
+    /// [`Self::shl1_with_carry`] called with [`Limb::ZERO`].
+    #[inline(always)]
+    #[must_use]
+    pub const fn overflowing_shl1(&self) -> (Self, Limb) {
+        self.shl1_with_carry(Limb::ZERO)
     }
 
     /// Computes `self << shift` where `0 <= shift < Limb::BITS`,

@@ -28,7 +28,7 @@ impl Limb {
 
     /// Returns the truthy value if `self != 0` and the falsy value otherwise.
     #[inline]
-    pub(crate) const fn is_nonzero(self) -> Choice {
+    pub const fn is_nonzero(self) -> Choice {
         word::choice_from_nz(self.0)
     }
 }

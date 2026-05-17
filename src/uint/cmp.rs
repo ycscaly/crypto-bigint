@@ -31,7 +31,7 @@ impl<const LIMBS: usize> Uint<LIMBS> {
 
     /// Returns the truthy value if `self == rhs` or the falsy value otherwise.
     #[inline]
-    pub(crate) const fn eq(lhs: &Self, rhs: &Self) -> Choice {
+    pub const fn eq(lhs: &Self, rhs: &Self) -> Choice {
         let mut acc = 0;
         let mut i = 0;
 
@@ -46,25 +46,25 @@ impl<const LIMBS: usize> Uint<LIMBS> {
 
     /// Returns the truthy value if `self < rhs` and the falsy value otherwise.
     #[inline]
-    pub(crate) const fn lt(lhs: &Self, rhs: &Self) -> Choice {
+    pub const fn lt(lhs: &Self, rhs: &Self) -> Choice {
         UintRef::lt(lhs.as_uint_ref(), rhs.as_uint_ref())
     }
 
     /// Returns the truthy value if `self <= rhs` and the falsy value otherwise.
     #[inline]
-    pub(crate) const fn lte(lhs: &Self, rhs: &Self) -> Choice {
+    pub const fn lte(lhs: &Self, rhs: &Self) -> Choice {
         Self::gt(lhs, rhs).not()
     }
 
     /// Returns the truthy value if `self > rhs` and the falsy value otherwise.
     #[inline]
-    pub(crate) const fn gt(lhs: &Self, rhs: &Self) -> Choice {
+    pub const fn gt(lhs: &Self, rhs: &Self) -> Choice {
         UintRef::lt(rhs.as_uint_ref(), lhs.as_uint_ref())
     }
 
     /// Returns the Ordering between `self` and `rhs`.
     #[inline]
-    pub(crate) const fn cmp(lhs: &Self, rhs: &Self) -> Ordering {
+    pub const fn cmp(lhs: &Self, rhs: &Self) -> Ordering {
         UintRef::cmp(lhs.as_uint_ref(), rhs.as_uint_ref())
     }
 

@@ -13,6 +13,31 @@ impl<const LIMBS: usize> Int<LIMBS> {
     pub const fn from_be_hex(hex: &str) -> Self {
         Self(Uint::from_be_hex(hex))
     }
+
+    /// Create a new [`Int`] from the provided big endian bytes.
+    ///
+    /// See [`Uint::from_be_slice`] for more details.
+    pub const fn from_be_slice(bytes: &[u8]) -> Self {
+        Self(Uint::from_be_slice(bytes))
+    }
+
+    /// Create a new [`Int`] from the provided little endian bytes.
+    ///
+    /// See [`Uint::from_le_slice`] for more details.
+    pub const fn from_le_slice(bytes: &[u8]) -> Self {
+        Self(Uint::from_le_slice(bytes))
+    }
+
+    /// Create a new [`Int`] from the provided little endian hex string.
+    ///
+    /// See [`Uint::from_le_hex`] for more details.
+    ///
+    /// # Panics
+    /// - if the hex is malformed or not zero-padded accordingly for the size.
+    #[must_use]
+    pub const fn from_le_hex(hex: &str) -> Self {
+        Self(Uint::from_le_hex(hex))
+    }
 }
 
 impl<const LIMBS: usize> Encoding for Int<LIMBS> {

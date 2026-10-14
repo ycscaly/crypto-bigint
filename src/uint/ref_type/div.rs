@@ -90,6 +90,56 @@ impl UintRef {
         x.unbounded_shr_assign_by_limbs_vartime((ywords - 1) as u32);
     }
 
+    /// Computes `self` / `rhs`, returning the quotient in `self` and the remainder in `rhs`.
+    ///
+    /// This function operates in variable-time with respect to both `self` and `rhs`: the
+    /// long-division loop runs over the limbs that `self` actually occupies, not over its
+    /// full width. Prefer this over [`Self::div_rem_vartime`] when both operands are public
+    /// and the dividend is typically much narrower than its type.
+    ///
+    /// # Panics
+    /// If the divisor is zero.
+    pub(crate) const fn div_rem_full_vartime(&mut self, rhs: &mut Self) {
+        let (x, y) = (self, rhs);
+        let xwords = bitlen::to_limbs(x.bits_vartime());
+        let ywords = bitlen::to_limbs(y.bits_vartime());
+
+        match (xwords, ywords) {
+            (_, 0) => panic!("zero divisor"),
+            (0, _) => {
+                // The dividend is zero: the quotient (already zero) and the remainder are zero.
+                y.fill(Limb::ZERO);
+                return;
+            }
+            (_, 1) => {
+                // Perform limb division over the occupied limbs only.
+                let rem_limb = x
+                    .leading_mut(xwords)
+                    .div_rem_limb(y.limbs[0].to_nz().expect_copied("zero divisor"));
+                y.fill(Limb::ZERO);
+                y.limbs[0] = rem_limb;
+                return;
+            }
+            _ if ywords > xwords => {
+                // Divisor is greater than dividend. Return zero and the dividend as the
+                // quotient and remainder
+                y.leading_mut(xwords).copy_from(x.leading(xwords));
+                y.trailing_mut(xwords).fill(Limb::ZERO);
+                x.fill(Limb::ZERO);
+                return;
+            }
+            _ => (),
+        }
+
+        // Every limb of `y` above `ywords` is already zero, so the remainder lands in place.
+        x.leading_mut(xwords)
+            .div_rem_large_vartime(y.leading_mut(ywords));
+
+        // Shift the quotient to the low limbs within dividend
+        #[allow(clippy::cast_possible_truncation, reason = "TODO")]
+        x.unbounded_shr_assign_by_limbs_vartime((ywords - 1) as u32);
+    }
+
     /// Computes `x_lower_upper` % `rhs`, returning the remainder in `rhs`.
     ///
     /// The `x_lower_upper` tuple represents a wide integer. The size of `x_lower_upper.1` must be

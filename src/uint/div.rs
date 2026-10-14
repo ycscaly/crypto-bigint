@@ -69,6 +69,23 @@ impl<const LIMBS: usize> Uint<LIMBS> {
         (x, y)
     }
 
+    /// Computes `self` / `rhs`, returning the quotient and the remainder.
+    ///
+    /// This is variable-time with respect to both `self` and `rhs`: the long-division loop
+    /// runs over the limbs that `self` actually occupies rather than over its full width.
+    /// Use it only when both operands are public, and prefer it over
+    /// [`Self::div_rem_vartime`] when the dividend is typically much narrower than its type.
+    #[inline]
+    #[must_use]
+    pub const fn div_rem_full_vartime<const RHS_LIMBS: usize>(
+        &self,
+        rhs: &NonZero<Uint<RHS_LIMBS>>,
+    ) -> (Self, Uint<RHS_LIMBS>) {
+        let (mut x, mut y) = (*self, *rhs.as_ref());
+        UintRef::div_rem_full_vartime(x.as_mut_uint_ref(), y.as_mut_uint_ref());
+        (x, y)
+    }
+
     /// Exactly divides `self` by `rhs`, returning `CtOption::none()` if `self` is not divisible by `rhs`.
     #[must_use]
     pub const fn div_exact<const RHS_LIMBS: usize>(
@@ -544,7 +561,10 @@ mod tests {
     };
 
     #[cfg(feature = "rand_core")]
-    use {crate::Random, chacha20::ChaCha8Rng, rand_core::Rng, rand_core::SeedableRng};
+    use {
+        crate::Random, crate::RandomBits, chacha20::ChaCha8Rng, rand_core::Rng,
+        rand_core::SeedableRng,
+    };
 
     #[test]
     fn div_word() {
@@ -997,5 +1017,65 @@ mod tests {
             y: U1024::from(456u64),
         };
         assert_eq!(a.divide_x_by_y(), U1024::from(2707385u64));
+    }
+
+    #[test]
+    fn div_rem_full_vartime_matches_div_rem_vartime() {
+        let mut rng = ChaCha8Rng::from_seed([11u8; 32]);
+        // Dividends and divisors of every occupied width, including values much narrower
+        // than their types, which is the case the fully variable-time path optimizes.
+        for num_bits in [1u32, 63, 64, 65, 130, 256, 511, 512, 700, 1023, 1024] {
+            for den_bits in [1u32, 2, 63, 64, 65, 130, 256, 512, 700, 1024] {
+                for _ in 0..8 {
+                    let num = U1024::random_bits(&mut rng, num_bits);
+                    let den = U1024::random_bits(&mut rng, den_bits);
+                    let Some(den) = NonZero::new(den).into_option() else {
+                        continue;
+                    };
+                    assert_eq!(
+                        num.div_rem_full_vartime(&den),
+                        num.div_rem_vartime(&den),
+                        "{num_bits}-bit / {den_bits}-bit"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn div_rem_full_vartime_different_sizes_and_edges() {
+        let mut rng = ChaCha8Rng::from_seed([12u8; 32]);
+        for _ in 0..64 {
+            let num = U1024::random_from_rng(&mut rng);
+            let den = NonZero::new(U256::random_from_rng(&mut rng)).unwrap();
+            assert_eq!(num.div_rem_full_vartime(&den), num.div_rem_vartime(&den));
+        }
+        let den = NonZero::new(U256::from(7u8)).unwrap();
+        assert_eq!(
+            U1024::ZERO.div_rem_full_vartime(&den),
+            (U1024::ZERO, U256::ZERO)
+        );
+        assert_eq!(
+            U1024::ONE.div_rem_full_vartime(&den),
+            (U1024::ZERO, U256::ONE)
+        );
+        assert_eq!(
+            U1024::from(7u8).div_rem_full_vartime(&den),
+            (U1024::ONE, U256::ZERO)
+        );
+        let den = NonZero::new(U256::MAX).unwrap();
+        assert_eq!(
+            U1024::MAX.div_rem_full_vartime(&den),
+            U1024::MAX.div_rem_vartime(&den)
+        );
+        let den = NonZero::new(U1024::MAX).unwrap();
+        assert_eq!(
+            U1024::MAX.div_rem_full_vartime(&den),
+            (U1024::ONE, U1024::ZERO)
+        );
+        assert_eq!(
+            U1024::from(5u8).div_rem_full_vartime(&den),
+            (U1024::ZERO, U1024::from(5u8))
+        );
     }
 }

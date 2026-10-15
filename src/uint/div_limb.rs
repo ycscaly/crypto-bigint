@@ -308,6 +308,91 @@ pub(crate) const fn mul_rem(a: Limb, b: Limb, d: NonZero<Limb>) -> Limb {
     rem_limb_with_reciprocal(&Uint::from_words([lo, hi]), &rec)
 }
 
+/// `(x_hi, x_lo) + (y_hi, y_lo)` as a double word, returned as `(lo, hi)`.
+///
+/// The `v0.7.0-rc.9` primitive, kept verbatim for [`div2by1_rc9`].
+#[inline(always)]
+const fn addhilo_rc9(x_lo: Word, x_hi: Word, y_lo: Word, y_hi: Word) -> (Word, Word) {
+    let res = (((x_hi as WideWord) << Word::BITS) | (x_lo as WideWord))
+        + (((y_hi as WideWord) << Word::BITS) | (y_lo as WideWord));
+    (res as Word, (res >> Word::BITS) as Word)
+}
+
+/// The `v0.7.0-rc.9` two-by-one division step, kept verbatim: `(u1, u0) / d` for the
+/// normalized divisor `d` behind `reciprocal`, returning the quotient word and the remainder.
+/// Only the constant-time selection helpers are spelled with this crate's `word` module.
+pub(crate) const fn div2by1_rc9(u1: Word, u0: Word, reciprocal: &Reciprocal) -> (Word, Word) {
+    let d = reciprocal.divisor_normalized;
+
+    debug_assert!(d >= (1 << (Word::BITS - 1)));
+    debug_assert!(u1 < d);
+
+    let (q0, q1) = widening_mul(reciprocal.reciprocal, u1);
+    let (q0, q1) = addhilo_rc9(q0, q1, u0, u1);
+    let q1 = q1.wrapping_add(1);
+    let r = u0.wrapping_sub(q1.wrapping_mul(d));
+
+    let r_gt_q0 = word::choice_from_lt(q0, r);
+    let q1 = word::select(q1, q1.wrapping_sub(1), r_gt_q0);
+    let r = word::select(r, r.wrapping_add(d), r_gt_q0);
+
+    // If this was a normal `if`, we wouldn't need wrapping ops, because there would be no overflow.
+    // But since we calculate both results either way, we have to wrap.
+    // Added an assert to still check the lack of overflow in debug mode.
+    debug_assert!(r < d || q1 < Word::MAX);
+    let r_ge_d = word::choice_from_le(d, r);
+    let q1 = word::select(q1, q1.wrapping_add(1), r_ge_d);
+    let r = word::select(r, r.wrapping_sub(d), r_ge_d);
+
+    (q1, r)
+}
+
+/// The `v0.7.0-rc.9` three-by-two division step, kept verbatim: the quotient word of
+/// `(u2, u1, u0) / (v1, v0)`, where `v1_reciprocal` is the reciprocal of the normalized `v1`
+/// (its shift must be zero) and `u2 <= v1`. This is Algorithm Q of
+/// <https://janmr.com/blog/2014/04/basic-multiple-precision-long-division/>. Kept for callers
+/// that reproduce the `rc.9` long division exactly; this crate's own
+/// [`div_rem_vartime`](crate::Uint::div_rem_vartime) uses the 0.7.4 rewrite of this step.
+pub const fn div3by2_rc9(
+    u2: Word,
+    u1: Word,
+    u0: Word,
+    v1_reciprocal: &Reciprocal,
+    v0: Word,
+) -> Word {
+    debug_assert!(v1_reciprocal.shift == 0);
+    debug_assert!(u2 <= v1_reciprocal.divisor_normalized);
+
+    let q_maxed = word::choice_from_eq(u2, v1_reciprocal.divisor_normalized);
+    let (mut quo, rem) = div2by1_rc9(word::select(u2, 0, q_maxed), u1, v1_reciprocal);
+    // When the leading dividend word equals the leading divisor word, cap the quotient
+    // at Word::MAX and set the remainder to the sum of the top dividend words.
+    quo = word::select(quo, Word::MAX, q_maxed);
+    let mut rem = word::select_wide(
+        rem as WideWord,
+        (u2 as WideWord) + (u1 as WideWord),
+        q_maxed,
+    );
+
+    let mut i = 0;
+    while i < 2 {
+        let qy = (quo as WideWord) * (v0 as WideWord);
+        let rx = (rem << Word::BITS) | (u0 as WideWord);
+        // If r < b and q*y[-2] > r*x[-1], then set q = q - 1 and r = r + v1
+        let done =
+            word::choice_from_nz((rem >> Word::BITS) as Word).or(word::choice_from_wide_le(qy, rx));
+        quo = word::select(quo.wrapping_sub(1), quo, done);
+        rem = word::select_wide(
+            rem + (v1_reciprocal.divisor_normalized as WideWord),
+            rem,
+            done,
+        );
+        i += 1;
+    }
+
+    quo
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Reciprocal, div2by1, reciprocal};

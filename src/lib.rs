@@ -167,7 +167,7 @@ pub use crate::{
     odd::*,
     traits::*,
     uint::{
-        div_limb::Reciprocal,
+        div_limb::{Reciprocal, div3by2_rc9},
         encoding::{EncodedUint, TryFromSliceError},
         ref_type::UintRef,
         *,

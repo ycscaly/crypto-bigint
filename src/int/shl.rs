@@ -77,15 +77,22 @@ impl<const LIMBS: usize> Int<LIMBS> {
         Self(self.0.unbounded_shl_vartime(shift))
     }
 
-    /// Computes `self << shift` in a panic-free manner, reducing shift modulo the type's width.
+    /// Computes `self << shift` in a panic-free manner, returning zero if the shift exceeds the
+    /// precision.
+    ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     #[inline(always)]
     #[must_use]
     pub const fn wrapping_shl(&self, shift: u32) -> Self {
         Self(self.0.wrapping_shl(shift))
     }
 
-    /// Computes `self << shift` in variable-time in a panic-free manner, reducing shift modulo
-    /// the type's width.
+    /// Computes `self << shift` in variable-time in a panic-free manner, returning zero if the
+    /// shift exceeds the precision.
+    ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     ///
     /// NOTE: this operation is variable time with respect to `shift` *ONLY*.
     ///
@@ -234,15 +241,15 @@ mod tests {
 
     #[test]
     fn wrapping_shl() {
-        assert_eq!(I256::MAX.wrapping_shl(257), I256::MAX.shl(1));
-        assert_eq!(I256::MIN.wrapping_shl(257), I256::MIN.shl(1));
+        assert_eq!(I256::MAX.wrapping_shl(257), I256::ZERO);
+        assert_eq!(I256::MIN.wrapping_shl(257), I256::ZERO);
         assert_eq!(
             ShlVartime::wrapping_shl_vartime(&I256::MAX, 257),
-            I256::MAX.shl(1)
+            I256::ZERO
         );
         assert_eq!(
             ShlVartime::wrapping_shl_vartime(&I256::MIN, 257),
-            I256::MIN.shl(1)
+            I256::ZERO
         );
     }
 }

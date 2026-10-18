@@ -97,8 +97,10 @@ impl BoxedUint {
         self.as_mut_uint_ref().unbounded_shl_assign_vartime(shift);
     }
 
-    /// Computes `self << shift` in a panic-free manner, masking off bits of `shift` which would cause the shift to
-    /// exceed the type's width.
+    /// Computes `self << shift` in a panic-free manner, producing zero in the case of overflow.
+    ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     #[must_use]
     pub fn wrapping_shl(&self, shift: u32) -> Self {
         let mut result = self.clone();
@@ -106,22 +108,29 @@ impl BoxedUint {
         result
     }
 
-    /// Computes `self <<= shift` in a panic-free manner, masking off bits of `shift` which would cause the shift to
-    /// exceed the type's width.
+    /// Computes `self <<= shift` in a panic-free manner, producing zero in the case of overflow.
+    ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     pub fn wrapping_shl_assign(&mut self, shift: u32) {
         self.as_mut_uint_ref().wrapping_shl_assign(shift);
     }
 
-    /// Computes `self << shift` in variable-time in a panic-free manner, masking off bits of `shift` which would cause
-    /// the shift to exceed the type's width.
+    /// Computes `self << shift` in variable-time in a panic-free manner, producing zero in the
+    /// case of overflow.
+    ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     #[must_use]
-    #[allow(clippy::integer_division_remainder_used, reason = "vartime")]
     pub fn wrapping_shl_vartime(&self, shift: u32) -> Self {
-        self.unbounded_shl_vartime(shift % self.bits_precision())
+        self.unbounded_shl_vartime(shift)
     }
 
-    /// Computes `self <<= shift` in variable-time in a panic-free manner, masking
-    /// off bits of `shift` which would cause the shift to exceed the type's width.
+    /// Computes `self <<= shift` in variable-time in a panic-free manner, producing zero in the
+    /// case of overflow.
+    ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     pub fn wrapping_shl_assign_vartime(&mut self, shift: u32) {
         self.as_mut_uint_ref().wrapping_shl_assign_vartime(shift);
     }
@@ -278,7 +287,7 @@ mod tests {
         );
         assert_eq!(
             WrappingShl::wrapping_shl(&BoxedUint::one_with_precision(192), 192),
-            BoxedUint::one()
+            BoxedUint::zero()
         );
         assert_eq!(
             ShlVartime::wrapping_shl_vartime(&BoxedUint::one(), 2),
@@ -286,7 +295,7 @@ mod tests {
         );
         assert_eq!(
             ShlVartime::wrapping_shl_vartime(&BoxedUint::one_with_precision(192), 192),
-            BoxedUint::one()
+            BoxedUint::zero()
         );
     }
 }

@@ -3,10 +3,7 @@
 use core::num::NonZeroU32;
 
 use super::UintRef;
-use crate::{
-    Choice, Limb,
-    primitives::{u32_bits, u32_rem},
-};
+use crate::{Choice, Limb, primitives::u32_bits};
 
 impl UintRef {
     /// Left-shifts by `shift` bits.
@@ -160,22 +157,28 @@ impl UintRef {
             .shl_assign_limb_with_carry_vartime(rem, Limb::ZERO);
     }
 
-    /// Left-shifts by `shift` bits in a panic-free manner, reducing shift modulo the type's width.
+    /// Left-shifts by `shift` bits in a panic-free manner, producing zero if the shift exceeds
+    /// the precision.
     ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     #[inline(always)]
     pub const fn wrapping_shl_assign(&mut self, shift: u32) {
-        self.shl_assign(u32_rem(shift, self.bits_precision()));
+        self.unbounded_shl_assign(shift);
     }
 
-    /// Left-shifts by `shift` bits in a panic-free manner, reducing shift modulo the type's width.
+    /// Left-shifts by `shift` bits in a panic-free manner, producing zero if the shift exceeds
+    /// the precision.
+    ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     ///
     /// NOTE: this operation is variable time with respect to `shift` *ONLY*.
     ///
     /// When used with a fixed `shift`, this function is constant-time with respect to `self`.
     #[inline(always)]
-    #[allow(clippy::integer_division_remainder_used, reason = "vartime")]
     pub const fn wrapping_shl_assign_vartime(&mut self, shift: u32) {
-        self.unbounded_shl_assign_vartime(shift % self.bits_precision());
+        self.unbounded_shl_assign_vartime(shift);
     }
 
     /// Left-shifts by a single bit in constant-time, returning [`Limb::ONE`]

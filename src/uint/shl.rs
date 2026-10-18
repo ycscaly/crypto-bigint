@@ -1,6 +1,6 @@
 //! [`Uint`] bitwise left shift operations.
 
-use crate::{CtOption, Limb, Shl, ShlAssign, ShlVartime, Uint, WrappingShl, primitives::u32_rem};
+use crate::{CtOption, Limb, Shl, ShlAssign, ShlVartime, Uint, WrappingShl};
 
 impl<const LIMBS: usize> Uint<LIMBS> {
     /// Computes `self << shift`.
@@ -148,24 +148,30 @@ impl<const LIMBS: usize> Uint<LIMBS> {
         res
     }
 
-    /// Computes `self << shift` in a panic-free manner, reducing shift modulo the type's width.
+    /// Computes `self << shift` in a panic-free manner, returning zero if the shift exceeds the
+    /// precision.
+    ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     #[inline(always)]
     #[must_use]
     pub const fn wrapping_shl(&self, shift: u32) -> Self {
-        self.shl(u32_rem(shift, Self::BITS))
+        self.unbounded_shl(shift)
     }
 
-    /// Computes `self << shift` in variable-time in a panic-free manner, reducing shift modulo
-    /// the type's width.
+    /// Computes `self << shift` in variable-time in a panic-free manner, returning zero if the
+    /// shift exceeds the precision.
+    ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     ///
     /// NOTE: this operation is variable time with respect to `shift` *ONLY*.
     ///
     /// When used with a fixed `shift`, this function is constant-time with respect to `self`.
     #[inline(always)]
     #[must_use]
-    #[allow(clippy::integer_division_remainder_used, reason = "vartime")]
     pub const fn wrapping_shl_vartime(&self, shift: u32) -> Self {
-        self.unbounded_shl_vartime(shift % Self::BITS)
+        self.unbounded_shl_vartime(shift)
     }
 
     /// Computes `self << 1` in constant-time.
@@ -347,8 +353,8 @@ mod tests {
         assert!(N.overflowing_shl_vartime(256).is_none());
         assert_eq!(N.unbounded_shl(256), Uint::ZERO);
         assert_eq!(N.unbounded_shl_vartime(256), Uint::ZERO);
-        assert_eq!(N.wrapping_shl(256), N);
-        assert_eq!(N.wrapping_shl_vartime(256), N);
+        assert_eq!(N.wrapping_shl(256), Uint::ZERO);
+        assert_eq!(N.wrapping_shl_vartime(256), Uint::ZERO);
     }
 
     #[test]
@@ -424,14 +430,17 @@ mod tests {
     #[test]
     fn wrapping_shl() {
         assert_eq!(WrappingShl::wrapping_shl(&U192::ONE, 2), U192::from_u8(4));
-        assert_eq!(WrappingShl::wrapping_shl(&U192::ONE, U192::BITS), U192::ONE);
+        assert_eq!(
+            WrappingShl::wrapping_shl(&U192::ONE, U192::BITS),
+            U192::ZERO
+        );
         assert_eq!(
             ShlVartime::wrapping_shl_vartime(&U192::ONE, 2),
             U192::from_u8(4)
         );
         assert_eq!(
             ShlVartime::wrapping_shl_vartime(&U192::ONE, U192::BITS),
-            U192::ONE
+            U192::ZERO
         );
     }
 }

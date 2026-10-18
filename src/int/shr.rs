@@ -1,6 +1,6 @@
 //! [`Int`] bitwise right shift operations.
 
-use crate::{Choice, CtOption, Int, ShrVartime, Uint, WrappingShr, primitives::u32_rem};
+use crate::{Choice, CtOption, Int, ShrVartime, Uint, WrappingShr};
 use core::ops::{Shr, ShrAssign};
 
 impl<const LIMBS: usize> Int<LIMBS> {
@@ -110,10 +110,13 @@ impl<const LIMBS: usize> Int<LIMBS> {
     /// If the shift exceeds the precision, returns
     /// - `0` when `self` is non-negative, and
     /// - `-1` when `self` is negative.
+    ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
     #[inline]
     #[must_use]
     pub const fn wrapping_shr(&self, shift: u32) -> Self {
-        self.shr(u32_rem(shift, Self::BITS))
+        self.unbounded_shr(shift)
     }
 
     /// Computes `self >> shift` in variable-time in a panic-free manner.
@@ -122,14 +125,16 @@ impl<const LIMBS: usize> Int<LIMBS> {
     /// - `0` when `self` is non-negative, and
     /// - `-1` when `self` is negative.
     ///
+    /// This is the `v0.7.0-rc.9` behaviour, kept in this fork; upstream 0.7.5 reduces the shift
+    /// modulo the type's width instead.
+    ///
     /// NOTE: this operation is variable time with respect to `shift` *ONLY*.
     ///
     /// When used with a fixed `shift`, this function is constant-time with respect to `self`.
     #[inline]
     #[must_use]
-    #[allow(clippy::integer_division_remainder_used, reason = "needs triage")]
     pub const fn wrapping_shr_vartime(&self, shift: u32) -> Self {
-        self.unbounded_shr_vartime(shift % Self::BITS)
+        self.unbounded_shr_vartime(shift)
     }
 }
 
@@ -272,12 +277,19 @@ mod tests {
     }
 
     #[test]
-    fn wrapping_shr_vartime_multiple_of_bits_is_identity() {
+    fn wrapping_shr_vartime_at_or_past_the_width_fills_with_the_sign() {
         let values = [I256::MAX, I256::MIN, I256::ONE, I256::MINUS_ONE, I256::ZERO];
         for &val in &values {
-            // Shift by 0 and multiples of the bit size should be identity.
-            for i in 0..4 {
-                assert_eq!(val.wrapping_shr_vartime(i * I256::BITS), val);
+            // Shift by 0 is the identity.
+            assert_eq!(val.wrapping_shr_vartime(0), val);
+            // Any shift of the full width or more leaves only the sign (rc.9 behaviour).
+            let sign_fill = if val.is_negative().to_bool_vartime() {
+                I256::MINUS_ONE
+            } else {
+                I256::ZERO
+            };
+            for i in 1..4 {
+                assert_eq!(val.wrapping_shr_vartime(i * I256::BITS), sign_fill);
             }
         }
     }
@@ -298,15 +310,15 @@ mod tests {
 
     #[test]
     fn wrapping_shr() {
-        assert_eq!(I256::MAX.wrapping_shr(257), I256::MAX.shr(1));
-        assert_eq!(I256::MIN.wrapping_shr(257), I256::MIN.shr(1));
+        assert_eq!(I256::MAX.wrapping_shr(257), I256::ZERO);
+        assert_eq!(I256::MIN.wrapping_shr(257), I256::MINUS_ONE);
         assert_eq!(
             ShrVartime::wrapping_shr_vartime(&I256::MAX, 257),
-            I256::MAX.shr(1)
+            I256::ZERO
         );
         assert_eq!(
             ShrVartime::wrapping_shr_vartime(&I256::MIN, 257),
-            I256::MIN.shr(1)
+            I256::MINUS_ONE
         );
     }
 }

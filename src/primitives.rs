@@ -82,6 +82,10 @@ pub(crate) const fn u32_min(a: u32, b: u32) -> u32 {
 #[inline(never)]
 #[allow(clippy::cast_possible_truncation, reason = "needs triage")]
 #[allow(clippy::integer_division_remainder_used, reason = "needs triage")]
+#[allow(
+    dead_code,
+    reason = "upstream's wrapping shifts reduce the shift with it; this fork's wrapping shifts return zero past the width instead (the v0.7.0-rc.9 behaviour)"
+)]
 pub(crate) const fn u32_rem(n: u32, d: u32) -> u32 {
     assert!(d > 0, "divisor must be nonzero");
     let c = u64::MAX / (d as u64) + 1;

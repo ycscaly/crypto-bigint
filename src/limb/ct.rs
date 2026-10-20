@@ -4,6 +4,25 @@ use crate::{Choice, CtAssign, CtEq, CtGt, CtLt, CtSelect, Limb, word};
 use ctutils::{CtAssignSlice, CtEqSlice};
 
 impl Limb {
+    /// The `v0.7.0-rc.9` `Limb::select`, line for line: return `b` if `c` is truthy, otherwise
+    /// return `a`, by mask arithmetic. It carries the `_rc9` suffix because 0.7.5 has a
+    /// crate-private `select` of its own.
+    #[inline]
+    pub const fn select_rc9(a: Self, b: Self, c: Choice) -> Self {
+        Self(word::select_word_rc9(word::choice_to_mask_rc9(c), a.0, b.0))
+    }
+
+    /// The `v0.7.0-rc.9` `Limb::ct_conditional_swap`, line for line: swap the values of `a` and
+    /// `b` if `c` is truthy, otherwise do nothing, by mask arithmetic.
+    #[inline]
+    pub const fn ct_conditional_swap_rc9(a: &mut Self, b: &mut Self, c: Choice) {
+        let mask = word::choice_to_mask_rc9(c);
+        (*a, *b) = (
+            Self(word::select_word_rc9(mask, a.0, b.0)),
+            Self(word::select_word_rc9(mask, b.0, a.0)),
+        )
+    }
+
     /// Return `b` if `c` is truthy, otherwise return `a`.
     #[inline]
     pub(crate) const fn select(a: Self, b: Self, c: Choice) -> Self {

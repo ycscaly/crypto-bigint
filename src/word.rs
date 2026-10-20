@@ -140,6 +140,25 @@ pub(crate) const fn choice_to_mask(choice: Choice) -> Word {
     (choice.to_u8() as Word).wrapping_neg()
 }
 
+/// The `Word`-sized bitmask of a [`Choice`] the way `v0.7.0-rc.9`'s `ConstChoice` carried it:
+/// plain arithmetic on the stored bit, without the `black_box` that [`Choice::to_u8`] applies.
+/// Used by the `_rc9` select, swap and comparison routines kept in this fork.
+///
+/// # Returns
+/// - `0` for `Choice::FALSE`
+/// - `Word::MAX` for `Choice::TRUE`
+#[inline]
+pub(crate) const fn choice_to_mask_rc9(choice: Choice) -> Word {
+    choice.to_u64_mask() as Word
+}
+
+/// The `v0.7.0-rc.9` `ConstChoice::select_word`, line for line, on a mask: return `b` if the
+/// mask is all ones, otherwise return `a`.
+#[inline]
+pub(crate) const fn select_word_rc9(mask: Word, a: Word, b: Word) -> Word {
+    a ^ (mask & (a ^ b))
+}
+
 /// Create a `WideWord`-sized bitmask.
 ///
 /// # Returns

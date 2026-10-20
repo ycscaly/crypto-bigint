@@ -4,6 +4,62 @@ use crate::{Choice, CtAssign, CtEq, CtGt, CtLt, CtSelect, Limb, Uint, UintRef};
 use ctutils::{CtAssignSlice, CtEqSlice};
 
 impl<const LIMBS: usize> Uint<LIMBS> {
+    /// The `v0.7.0-rc.9` `Uint::select`, line for line: return `b` if `c` is truthy, otherwise
+    /// return `a`, by mask arithmetic on every limb. Kept in this fork so that downstream code
+    /// that called it keeps calling the same routine; it carries the `_rc9` suffix because 0.7.5
+    /// has a crate-private `select` of its own, and its public `ct_select` is the `ctutils`
+    /// conditional-move implementation.
+    #[inline]
+    pub const fn select_rc9(a: &Self, b: &Self, c: Choice) -> Self {
+        let mut limbs = [Limb::ZERO; LIMBS];
+
+        let mut i = 0;
+        while i < LIMBS {
+            limbs[i] = Limb::select_rc9(a.limbs[i], b.limbs[i], c);
+            i += 1;
+        }
+
+        Uint { limbs }
+    }
+
+    /// The `v0.7.0-rc.9` `Uint::conditional_swap`, line for line: swap `a` and `b` if `c` is
+    /// truthy, otherwise do nothing, by mask arithmetic on every limb.
+    #[inline]
+    pub const fn conditional_swap_rc9(a: &mut Self, b: &mut Self, c: Choice) {
+        let mut i = 0;
+        let a = a.as_mut_limbs();
+        let b = b.as_mut_limbs();
+        while i < LIMBS {
+            Limb::ct_conditional_swap_rc9(&mut a[i], &mut b[i], c);
+            i += 1;
+        }
+    }
+
+    /// The `v0.7.0-rc.9` `Uint::lt`, line for line: the truthy value if `lhs < rhs`, from the
+    /// borrow of a subtraction. It carries the `_rc9` suffix because 0.7.5 has a crate-private
+    /// `lt` of its own, with a different body.
+    #[inline]
+    pub const fn lt_rc9(lhs: &Self, rhs: &Self) -> Choice {
+        // We could use the same approach as in Limb::ct_lt(),
+        // but since we have to use Uint::wrapping_sub(), which calls `borrowing_sub()`,
+        // there are no savings compared to just calling `borrowing_sub()` directly.
+        let (_res, borrow) = lhs.borrowing_sub(rhs, Limb::ZERO);
+        Choice::from_u64_lsb(borrow.0 as u64 & 1)
+    }
+
+    /// The `v0.7.0-rc.9` `Uint::lte`, line for line.
+    #[inline]
+    pub const fn lte_rc9(lhs: &Self, rhs: &Self) -> Choice {
+        Self::gt_rc9(lhs, rhs).not()
+    }
+
+    /// The `v0.7.0-rc.9` `Uint::gt`, line for line.
+    #[inline]
+    pub const fn gt_rc9(lhs: &Self, rhs: &Self) -> Choice {
+        let (_res, borrow) = rhs.borrowing_sub(lhs, Limb::ZERO);
+        Choice::from_u64_lsb(borrow.0 as u64 & 1)
+    }
+
     /// Return `b` if `c` is truthy, otherwise return `a`.
     #[inline]
     pub(crate) const fn select(a: &Self, b: &Self, c: Choice) -> Self {
@@ -114,6 +170,36 @@ impl<const LIMBS: usize> subtle::ConstantTimeLess for Uint<LIMBS> {
 #[cfg(test)]
 mod tests {
     use crate::{Choice, CtEq, CtGt, CtLt, CtSelect, U128};
+
+    #[test]
+    fn rc9_routines_agree_with_ct_traits() {
+        let values = [
+            U128::ZERO,
+            U128::ONE,
+            U128::MAX,
+            U128::from_u64(0xdead_beef),
+            U128::MAX.shr(1),
+        ];
+        for a in values {
+            for b in values {
+                for c in [Choice::FALSE, Choice::TRUE] {
+                    assert!(
+                        U128::select_rc9(&a, &b, c)
+                            .ct_eq(&a.ct_select(&b, c))
+                            .to_bool()
+                    );
+                    let (mut x, mut y) = (a, b);
+                    let (mut p, mut q) = (a, b);
+                    U128::conditional_swap_rc9(&mut x, &mut y, c);
+                    U128::ct_swap(&mut p, &mut q, c);
+                    assert!(x.ct_eq(&p).to_bool() && y.ct_eq(&q).to_bool());
+                }
+                assert_eq!(U128::lt_rc9(&a, &b).to_bool(), a.ct_lt(&b).to_bool());
+                assert_eq!(U128::gt_rc9(&a, &b).to_bool(), a.ct_gt(&b).to_bool());
+                assert_eq!(U128::lte_rc9(&a, &b).to_bool(), !a.ct_gt(&b).to_bool());
+            }
+        }
+    }
 
     #[test]
     fn ct_eq() {

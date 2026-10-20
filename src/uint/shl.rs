@@ -174,6 +174,31 @@ impl<const LIMBS: usize> Uint<LIMBS> {
         self.unbounded_shl_vartime(shift)
     }
 
+    /// Computes `self << 1` in constant-time, returning the bit shifted out as the carry limb
+    /// (`Limb::ONE` if the most significant bit was set, `Limb::ZERO` otherwise).
+    ///
+    /// The `v0.7.0-rc.9` method, kept in this fork line for line (it does not exist in 0.7.5)
+    /// so that downstream code that called it keeps calling the same routine.
+    #[inline(always)]
+    #[must_use]
+    pub const fn overflowing_shl1(&self) -> (Self, Limb) {
+        self.carrying_shl1(Limb::ZERO)
+    }
+
+    /// The `v0.7.0-rc.9` body behind [`Self::overflowing_shl1`], line for line.
+    const fn carrying_shl1(&self, mut carry: Limb) -> (Self, Limb) {
+        let mut ret = Self::ZERO;
+        let mut i = 0;
+        while i < LIMBS {
+            let (shifted, new_carry) = self.limbs[i].shl1();
+            ret.limbs[i] = shifted.bitor(carry);
+            carry = new_carry;
+            i += 1;
+        }
+
+        (ret, carry)
+    }
+
     /// Computes `self << 1` in constant-time.
     #[inline(always)]
     #[must_use]
@@ -425,6 +450,13 @@ mod tests {
             ShlVartime::unbounded_shl_vartime(&U192::MAX, U192::BITS),
             U192::ZERO
         );
+    }
+
+    #[test]
+    fn overflowing_shl1_is_shl_by_one() {
+        assert_eq!(N.overflowing_shl1(), (N.shl(1), Limb::ONE));
+        assert_eq!(U256::ONE.overflowing_shl1(), (U256::from_u8(2), Limb::ZERO));
+        assert_eq!(U256::MAX.overflowing_shl1(), (U256::MAX.shl(1), Limb::ONE));
     }
 
     #[test]

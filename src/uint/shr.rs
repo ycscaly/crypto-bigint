@@ -1,6 +1,6 @@
 //! [`Uint`] bitwise right shift operations.
 
-use crate::{CtOption, Limb, Shr, ShrAssign, ShrVartime, Uint, WrappingShr};
+use crate::{Choice, CtOption, Limb, Shr, ShrAssign, ShrVartime, Uint, WrappingShr, word};
 
 impl<const LIMBS: usize> Uint<LIMBS> {
     /// Computes `self >> shift`.
@@ -182,6 +182,32 @@ impl<const LIMBS: usize> Uint<LIMBS> {
     #[must_use]
     pub const fn wrapping_shr_vartime(&self, shift: u32) -> Self {
         self.unbounded_shr_vartime(shift)
+    }
+
+    /// Computes `self >> 1` in constant-time: the `v0.7.0-rc.9` `Uint::shr1`, kept in this fork
+    /// line for line so that downstream code that called it keeps calling the same routine. It
+    /// carries the `_rc9` suffix because 0.7.5 has a crate-private `shr1` of its own, with a
+    /// different body, which upstream's internals call.
+    #[inline(always)]
+    #[must_use]
+    pub const fn shr1_rc9(&self) -> Self {
+        self.shr1_with_carry_rc9().0
+    }
+
+    /// The `v0.7.0-rc.9` `shr1_with_carry`, line for line: `self >> 1` and whether the least
+    /// significant bit was set.
+    const fn shr1_with_carry_rc9(&self) -> (Self, Choice) {
+        let mut ret = Self::ZERO;
+        let mut i = LIMBS;
+        let mut carry = Limb::ZERO;
+        while i > 0 {
+            i -= 1;
+            let (shifted, new_carry) = self.limbs[i].shr1();
+            ret.limbs[i] = shifted.bitor(carry);
+            carry = new_carry;
+        }
+
+        (ret, word::choice_from_lsb(carry.0 >> Limb::HI_BIT))
     }
 
     /// Computes `self >> 1` in constant-time.
@@ -387,6 +413,14 @@ mod tests {
             ShrVartime::unbounded_shr_vartime(&U192::MAX, U192::BITS),
             U192::ZERO
         );
+    }
+
+    #[test]
+    fn shr1_rc9_is_shr_by_one() {
+        assert_eq!(N.shr1_rc9(), N.shr(1));
+        assert_eq!(N.shr1_rc9(), N.shr1());
+        assert_eq!(U192::ONE.shr1_rc9(), U192::ZERO);
+        assert_eq!(U192::MAX.shr1_rc9(), U192::MAX.shr(1));
     }
 
     #[test]

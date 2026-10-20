@@ -3,6 +3,13 @@
 use crate::{Choice, CtOption, Limb, Shl, ShlAssign, ShlVartime, WrappingShl};
 
 impl Limb {
+    /// Computes `self << 1` and returns the result and the carry: the `v0.7.0-rc.9` helper,
+    /// kept in this fork for [`Uint::overflowing_shl1`](crate::Uint::overflowing_shl1).
+    #[inline(always)]
+    pub(crate) const fn shl1(self) -> (Self, Self) {
+        (Self(self.0 << 1), Self(self.0 >> Self::HI_BIT))
+    }
+
     /// Computes `self << shift`.
     ///
     /// # Panics

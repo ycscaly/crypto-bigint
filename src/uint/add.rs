@@ -37,7 +37,6 @@ impl<const LIMBS: usize> Uint<LIMBS> {
     }
 
     /// Perform wrapping addition, discarding overflow.
-    #[inline]
     #[must_use]
     pub const fn wrapping_add(&self, rhs: &Self) -> Self {
         self.carrying_add(rhs, Limb::ZERO).0

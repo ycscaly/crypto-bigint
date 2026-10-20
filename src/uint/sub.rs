@@ -37,7 +37,6 @@ impl<const LIMBS: usize> Uint<LIMBS> {
 
     /// Perform wrapping subtraction, discarding underflow and wrapping around
     /// the boundary of the type.
-    #[inline]
     #[must_use]
     pub const fn wrapping_sub(&self, rhs: &Self) -> Self {
         self.borrowing_sub(rhs, Limb::ZERO).0

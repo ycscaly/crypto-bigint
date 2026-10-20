@@ -283,7 +283,7 @@ mod tests {
             // Shift by 0 is the identity.
             assert_eq!(val.wrapping_shr_vartime(0), val);
             // Any shift of the full width or more leaves only the sign (rc.9 behaviour).
-            let sign_fill = if val.is_negative().to_bool_vartime() {
+            let sign_fill = if val.is_negative().to_bool() {
                 I256::MINUS_ONE
             } else {
                 I256::ZERO

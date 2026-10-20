@@ -46,7 +46,6 @@ impl<const LIMBS: usize> Uint<LIMBS> {
     }
 
     /// Perform wrapping multiplication, discarding overflow.
-    #[inline]
     #[must_use]
     pub const fn wrapping_mul<const RHS_LIMBS: usize>(&self, rhs: &Uint<RHS_LIMBS>) -> Self {
         karatsuba::wrapping_mul_fixed::<LIMBS>(self.as_uint_ref(), rhs.as_uint_ref()).0

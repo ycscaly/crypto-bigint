@@ -35,6 +35,20 @@ cpubits::cpubits! {
         pub(crate) const fn choice_from_wide_lt(x: WideWord, y: WideWord) -> Choice {
             Choice::from_u64_lt(x, y)
         }
+
+        /// The `Word`-sized mask of a [`Choice`] by arithmetic on the stored bit; see
+        /// [`choice_to_mask`].
+        #[inline]
+        const fn choice_to_word_mask(choice: Choice) -> Word {
+            choice.to_u32_mask()
+        }
+
+        /// The `WideWord`-sized mask of a [`Choice`] by arithmetic on the stored bit; see
+        /// [`choice_to_mask`].
+        #[inline]
+        const fn choice_to_wide_word_mask(choice: Choice) -> WideWord {
+            choice.to_u64_mask()
+        }
     }
     64 => {
         /// Unsigned integer type that the [`Limb`][`crate::Limb`] newtype wraps.
@@ -65,6 +79,20 @@ cpubits::cpubits! {
         #[inline]
         pub(crate) const fn choice_from_wide_lt(x: WideWord, y: WideWord) -> Choice {
             Choice::from_u128_lt(x, y)
+        }
+
+        /// The `Word`-sized mask of a [`Choice`] by arithmetic on the stored bit; see
+        /// [`choice_to_mask`].
+        #[inline]
+        const fn choice_to_word_mask(choice: Choice) -> Word {
+            choice.to_u64_mask()
+        }
+
+        /// The `WideWord`-sized mask of a [`Choice`] by arithmetic on the stored bit; see
+        /// [`choice_to_mask`].
+        #[inline]
+        const fn choice_to_wide_word_mask(choice: Choice) -> WideWord {
+            choice.to_u128_mask()
         }
     }
 }
@@ -136,8 +164,9 @@ pub(crate) const fn select_wide(a: WideWord, b: WideWord, choice: Choice) -> Wid
 /// - `0` for `Choice::FALSE`
 /// - `Word::MAX` for `Choice::TRUE`
 ///
-/// This fork derives the mask with [`Choice::to_u64_mask`], plain arithmetic on the stored bit,
-/// where upstream 0.7.5 goes through [`Choice::to_u8`], which is `core::hint::black_box`. The
+/// This fork derives the mask with ctutils' `to_u32_mask`/`to_u64_mask` for the word width,
+/// plain arithmetic on the stored bit, where upstream 0.7.5 goes through [`Choice::to_u8`],
+/// which is `core::hint::black_box`. The
 /// mask select is called once per limb (`Limb::select` inside `Uint::select`, the constant-time
 /// division, the binary extended GCD, the constant-time shifts and `Int::abs_sign`), so the
 /// barrier ran once per limb per select and cost the class-group composition 11 to 30 percent
@@ -145,7 +174,7 @@ pub(crate) const fn select_wide(a: WideWord, b: WideWord, choice: Choice) -> Wid
 /// selection stays branchless mask arithmetic, as in rc.9.
 #[inline]
 pub(crate) const fn choice_to_mask(choice: Choice) -> Word {
-    choice.to_u64_mask() as Word
+    choice_to_word_mask(choice)
 }
 
 /// Create a `WideWord`-sized bitmask.
@@ -157,7 +186,7 @@ pub(crate) const fn choice_to_mask(choice: Choice) -> Word {
 /// See [`choice_to_mask`] for why this fork does not go through `Choice::to_u8`.
 #[inline]
 pub(crate) const fn choice_to_wide_mask(choice: Choice) -> WideWord {
-    choice.to_u128_mask() as WideWord
+    choice_to_wide_word_mask(choice)
 }
 
 #[inline(always)]

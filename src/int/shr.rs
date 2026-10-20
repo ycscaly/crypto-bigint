@@ -56,17 +56,18 @@ impl<const LIMBS: usize> Int<LIMBS> {
     }
 
     /// The `v0.7.0-rc.9` `Int::overflowing_shr_vartime`, line for line (its `ConstCtOption`
-    /// became `CtOption`, and its `Limb::select` is the crate-private mask select of 0.7.5).
+    /// became `Option`, as in 0.7.5's own `overflowing_shr_vartime`, and its `Limb::select` is
+    /// the crate-private mask select of 0.7.5).
     ///
     /// NOTE: this operation is variable time with respect to `shift` *ONLY*.
     #[inline(always)]
     #[must_use]
     #[allow(clippy::integer_division_remainder_used, reason = "rc.9 body")]
-    pub const fn overflowing_shr_vartime_rc9(&self, shift: u32) -> CtOption<Self> {
+    pub const fn overflowing_shr_vartime_rc9(&self, shift: u32) -> Option<Self> {
         let is_negative = self.is_negative();
 
         if shift >= Self::BITS {
-            return CtOption::none(Self::select(&Self::ZERO, &Self::MINUS_ONE, is_negative));
+            return None;
         }
 
         // Select the base limb, based on the sign of this value.
@@ -83,7 +84,7 @@ impl<const LIMBS: usize> Int<LIMBS> {
         }
 
         if rem == 0 {
-            return CtOption::some(Self(Uint::new(limbs)));
+            return Some(Self(Uint::new(limbs)));
         }
 
         // construct the carry s.t. the `rem`-most significant bits of `carry` are 1 when self
@@ -99,7 +100,7 @@ impl<const LIMBS: usize> Int<LIMBS> {
             carry = new_carry;
         }
 
-        CtOption::some(Self(Uint::new(limbs)))
+        Some(Self(Uint::new(limbs)))
     }
 
     /// Computes `self >> shift`.
@@ -259,10 +260,21 @@ mod tests {
     #[test]
     fn shr_vartime_rc9_agrees_with_shr_vartime() {
         use crate::I256;
-        let values = [I256::ZERO, I256::ONE, I256::MINUS_ONE, I256::MAX, I256::MIN, I256::from_i64(-123_456_789)];
+        let values = [
+            I256::ZERO,
+            I256::ONE,
+            I256::MINUS_ONE,
+            I256::MAX,
+            I256::MIN,
+            I256::from_i64(-123_456_789),
+        ];
         for v in values {
             for shift in [0, 1, 2, 63, 64, 65, 127, 128, 200, 255] {
-                assert_eq!(v.shr_vartime_rc9(shift), v.shr_vartime(shift), "{v:?} >> {shift}");
+                assert_eq!(
+                    v.shr_vartime_rc9(shift),
+                    v.shr_vartime(shift),
+                    "{v:?} >> {shift}"
+                );
             }
         }
     }

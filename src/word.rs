@@ -29,6 +29,12 @@ cpubits::cpubits! {
         pub(crate) const fn choice_from_wide_le(x: WideWord, y: WideWord) -> Choice {
             Choice::from_u64_le(x, y)
         }
+
+        /// Returns the truthy value if `x < y` and the falsy value otherwise.
+        #[inline]
+        pub(crate) const fn choice_from_wide_lt(x: WideWord, y: WideWord) -> Choice {
+            Choice::from_u64_lt(x, y)
+        }
     }
     64 => {
         /// Unsigned integer type that the [`Limb`][`crate::Limb`] newtype wraps.
@@ -55,6 +61,11 @@ cpubits::cpubits! {
             Choice::from_u128_le(x, y)
         }
 
+        /// Returns the truthy value if `x < y` and the falsy value otherwise.
+        #[inline]
+        pub(crate) const fn choice_from_wide_lt(x: WideWord, y: WideWord) -> Choice {
+            Choice::from_u128_lt(x, y)
+        }
     }
 }
 
@@ -126,7 +137,7 @@ pub(crate) const fn select_wide(a: WideWord, b: WideWord, choice: Choice) -> Wid
 /// - `Word::MAX` for `Choice::TRUE`
 #[inline]
 pub(crate) const fn choice_to_mask(choice: Choice) -> Word {
-    (choice.to_u8_vartime() as Word).wrapping_neg()
+    (choice.to_u8() as Word).wrapping_neg()
 }
 
 /// Create a `WideWord`-sized bitmask.
@@ -136,7 +147,7 @@ pub(crate) const fn choice_to_mask(choice: Choice) -> Word {
 /// - `Word::MAX` for `Choice::TRUE`
 #[inline]
 pub(crate) const fn choice_to_wide_mask(choice: Choice) -> WideWord {
-    (choice.to_u8_vartime() as WideWord).wrapping_neg()
+    (choice.to_u8() as WideWord).wrapping_neg()
 }
 
 #[inline(always)]

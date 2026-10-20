@@ -137,7 +137,9 @@ pub(crate) const fn select_wide(a: WideWord, b: WideWord, choice: Choice) -> Wid
 /// - `Word::MAX` for `Choice::TRUE`
 #[inline]
 pub(crate) const fn choice_to_mask(choice: Choice) -> Word {
-    (choice.to_u8() as Word).wrapping_neg()
+    // Experiment: the mask by plain arithmetic on the stored bit, without the `black_box`
+    // optimization barrier that `Choice::to_u8` applies on every call.
+    choice.to_u64_mask() as Word
 }
 
 /// Create a `WideWord`-sized bitmask.
@@ -147,7 +149,8 @@ pub(crate) const fn choice_to_mask(choice: Choice) -> Word {
 /// - `Word::MAX` for `Choice::TRUE`
 #[inline]
 pub(crate) const fn choice_to_wide_mask(choice: Choice) -> WideWord {
-    (choice.to_u8() as WideWord).wrapping_neg()
+    // Experiment: see `choice_to_mask`.
+    choice.to_u128_mask() as WideWord
 }
 
 #[inline(always)]

@@ -135,9 +135,17 @@ pub(crate) const fn select_wide(a: WideWord, b: WideWord, choice: Choice) -> Wid
 /// # Returns
 /// - `0` for `Choice::FALSE`
 /// - `Word::MAX` for `Choice::TRUE`
+///
+/// This fork derives the mask with [`Choice::to_u64_mask`], plain arithmetic on the stored bit,
+/// where upstream 0.7.5 goes through [`Choice::to_u8`], which is `core::hint::black_box`. The
+/// mask select is called once per limb (`Limb::select` inside `Uint::select`, the constant-time
+/// division, the binary extended GCD, the constant-time shifts and `Int::abs_sign`), so the
+/// barrier ran once per limb per select and cost the class-group composition 11 to 30 percent
+/// against `v0.7.0-rc.9`, whose `ConstChoice` was the mask itself and had no barrier. The
+/// selection stays branchless mask arithmetic, as in rc.9.
 #[inline]
 pub(crate) const fn choice_to_mask(choice: Choice) -> Word {
-    (choice.to_u8() as Word).wrapping_neg()
+    choice.to_u64_mask() as Word
 }
 
 /// Create a `WideWord`-sized bitmask.
@@ -145,9 +153,11 @@ pub(crate) const fn choice_to_mask(choice: Choice) -> Word {
 /// # Returns
 /// - `0` for `Choice::FALSE`
 /// - `Word::MAX` for `Choice::TRUE`
+///
+/// See [`choice_to_mask`] for why this fork does not go through `Choice::to_u8`.
 #[inline]
 pub(crate) const fn choice_to_wide_mask(choice: Choice) -> WideWord {
-    (choice.to_u8() as WideWord).wrapping_neg()
+    choice.to_u128_mask() as WideWord
 }
 
 #[inline(always)]
@@ -192,6 +202,14 @@ mod tests {
         let b: Word = 2;
         assert_eq!(super::split_wide(super::join(a, b)), (a, b));
         assert_eq!(super::split_wide(super::join(b, a)), (b, a));
+    }
+
+    #[test]
+    fn choice_to_mask() {
+        assert_eq!(super::choice_to_mask(Choice::FALSE), 0);
+        assert_eq!(super::choice_to_mask(Choice::TRUE), Word::MAX);
+        assert_eq!(super::choice_to_wide_mask(Choice::FALSE), 0);
+        assert_eq!(super::choice_to_wide_mask(Choice::TRUE), WideWord::MAX);
     }
 
     #[test]

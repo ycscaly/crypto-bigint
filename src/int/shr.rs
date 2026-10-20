@@ -1,6 +1,6 @@
 //! [`Int`] bitwise right shift operations.
 
-use crate::{Choice, CtOption, Int, ShrVartime, Uint, WrappingShr};
+use crate::{Choice, CtOption, Int, Limb, ShrVartime, Uint, WrappingShr};
 use core::ops::{Shr, ShrAssign};
 
 impl<const LIMBS: usize> Int<LIMBS> {
@@ -36,6 +36,70 @@ impl<const LIMBS: usize> Int<LIMBS> {
     pub const fn shr_vartime(&self, shift: u32) -> Self {
         self.overflowing_shr_vartime(shift)
             .expect("`shift` within the bit size of the integer")
+    }
+
+    /// Computes `self >> shift` in variable time: the `v0.7.0-rc.9` `Int::shr_vartime`, kept in
+    /// this fork line for line so that downstream code that called it keeps calling the same
+    /// routine. It carries the `_rc9` suffix because 0.7.5 has a `shr_vartime` of its own, with a
+    /// different body (it builds the sign fill with a constant-time shift of a full-width value).
+    ///
+    /// Note, this is _signed_ shift right, i.e., the value shifted in on the left is equal to
+    /// the most significant bit.
+    ///
+    /// # Panics
+    /// - if `shift >= Self::BITS`.
+    #[inline(always)]
+    #[must_use]
+    pub const fn shr_vartime_rc9(&self, shift: u32) -> Self {
+        self.overflowing_shr_vartime_rc9(shift)
+            .expect("`shift` within the bit size of the integer")
+    }
+
+    /// The `v0.7.0-rc.9` `Int::overflowing_shr_vartime`, line for line (its `ConstCtOption`
+    /// became `CtOption`, and its `Limb::select` is the crate-private mask select of 0.7.5).
+    ///
+    /// NOTE: this operation is variable time with respect to `shift` *ONLY*.
+    #[inline(always)]
+    #[must_use]
+    #[allow(clippy::integer_division_remainder_used, reason = "rc.9 body")]
+    pub const fn overflowing_shr_vartime_rc9(&self, shift: u32) -> CtOption<Self> {
+        let is_negative = self.is_negative();
+
+        if shift >= Self::BITS {
+            return CtOption::none(Self::select(&Self::ZERO, &Self::MINUS_ONE, is_negative));
+        }
+
+        // Select the base limb, based on the sign of this value.
+        let base = Limb::select(Limb::ZERO, Limb::MAX, is_negative);
+        let mut limbs = [base; LIMBS];
+
+        let shift_num = (shift / Limb::BITS) as usize;
+        let rem = shift % Limb::BITS;
+
+        let mut i = 0;
+        while i < LIMBS - shift_num {
+            limbs[i] = self.0.limbs[i + shift_num];
+            i += 1;
+        }
+
+        if rem == 0 {
+            return CtOption::some(Self(Uint::new(limbs)));
+        }
+
+        // construct the carry s.t. the `rem`-most significant bits of `carry` are 1 when self
+        // is negative, i.e., shift in 1s when the msb is 1.
+        let mut carry = Limb::select(Limb::ZERO, Limb::MAX, is_negative);
+        carry = carry.bitxor(carry.shr(rem)); // logical shift right; shifts in zeroes.
+
+        while i > 0 {
+            i -= 1;
+            let shifted = limbs[i].shr(rem);
+            let new_carry = limbs[i].shl(Limb::BITS - rem);
+            limbs[i] = shifted.bitor(carry);
+            carry = new_carry;
+        }
+
+        CtOption::some(Self(Uint::new(limbs)))
     }
 
     /// Computes `self >> shift`.
@@ -192,6 +256,17 @@ impl<const LIMBS: usize> ShrVartime for Int<LIMBS> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn shr_vartime_rc9_agrees_with_shr_vartime() {
+        use crate::I256;
+        let values = [I256::ZERO, I256::ONE, I256::MINUS_ONE, I256::MAX, I256::MIN, I256::from_i64(-123_456_789)];
+        for v in values {
+            for shift in [0, 1, 2, 63, 64, 65, 127, 128, 200, 255] {
+                assert_eq!(v.shr_vartime_rc9(shift), v.shr_vartime(shift), "{v:?} >> {shift}");
+            }
+        }
+    }
+
     use core::ops::Div;
 
     use crate::{I256, ShrVartime};

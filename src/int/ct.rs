@@ -9,6 +9,14 @@ impl<const LIMBS: usize> Int<LIMBS> {
     pub(crate) const fn select(a: &Self, b: &Self, c: Choice) -> Self {
         Self(Uint::select(&a.0, &b.0, c))
     }
+
+    /// The `v0.7.0-rc.9` `Int::select`, line for line, on [`Uint::select_rc9`]: return `b` if
+    /// `c` is truthy, otherwise return `a`, by mask arithmetic. The `_rc9` suffix is there
+    /// because 0.7.5 has a crate-private `select` of its own.
+    #[inline]
+    pub const fn select_rc9(a: &Self, b: &Self, c: Choice) -> Self {
+        Self(Uint::select_rc9(&a.0, &b.0, c))
+    }
 }
 
 impl<const LIMBS: usize> CtAssign for Int<LIMBS> {

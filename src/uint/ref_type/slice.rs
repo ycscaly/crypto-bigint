@@ -1,5 +1,5 @@
 use super::UintRef;
-use crate::{Choice, Limb};
+use crate::{Choice, Limb, word};
 
 impl UintRef {
     /// Copy the contents from a [`UintRef`].
@@ -46,9 +46,10 @@ impl UintRef {
     #[track_caller]
     pub const fn conditional_copy_from_slice(&mut self, limbs: &[Limb], copy: Choice) {
         assert!(self.limbs.len() == limbs.len(), "length mismatch");
+        let mask = word::choice_to_mask(copy);
         let mut i = 0;
         while i < self.limbs.len() {
-            self.limbs[i] = Limb::select(self.limbs[i], limbs[i], copy);
+            self.limbs[i] = Limb::select_with_mask(self.limbs[i], limbs[i], mask);
             i += 1;
         }
     }

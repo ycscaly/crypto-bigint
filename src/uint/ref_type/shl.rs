@@ -6,6 +6,7 @@ use super::UintRef;
 use crate::{
     Choice, Limb,
     primitives::{u32_bits, u32_rem},
+    word,
 };
 
 impl UintRef {
@@ -90,14 +91,15 @@ impl UintRef {
     #[inline(always)]
     pub(crate) const fn conditional_shl_assign_by_limbs_vartime(&mut self, shift: u32, c: Choice) {
         let shift = shift as usize;
+        let mask = word::choice_to_mask(c);
         let mut i = self.nlimbs();
         while i > shift {
             i -= 1;
-            self.limbs[i] = Limb::select(self.limbs[i], self.limbs[i - shift], c);
+            self.limbs[i] = Limb::select_with_mask(self.limbs[i], self.limbs[i - shift], mask);
         }
         while i > 0 {
             i -= 1;
-            self.limbs[i] = Limb::select(self.limbs[i], Limb::ZERO, c);
+            self.limbs[i] = Limb::select_with_mask(self.limbs[i], Limb::ZERO, mask);
         }
     }
 
@@ -209,21 +211,18 @@ impl UintRef {
 
         let lshift = shift.get();
         let rshift = Limb::BITS - lshift;
+        let mask = word::choice_to_mask(choice);
 
         let mut i = 0;
         while i < self.nlimbs() {
             (self.limbs[i], carry) = (
-                Limb::select(
-                    self.limbs[i],
-                    self.limbs[i].shl(lshift).bitor(carry),
-                    choice,
-                ),
+                Limb::select_with_mask(self.limbs[i], self.limbs[i].shl(lshift).bitor(carry), mask),
                 self.limbs[i].shr(rshift),
             );
             i += 1;
         }
 
-        Limb::select(Limb::ZERO, carry, choice)
+        Limb::select_with_mask(Limb::ZERO, carry, mask)
     }
 
     /// Left-shifts by `shift` bits where `0 < shift < Limb::BITS`, returning the carry.

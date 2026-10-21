@@ -1,6 +1,6 @@
 //! Constant-time support: impls of `Ct*` traits and constant-time `const fn` operations.
 
-use crate::{Choice, CtAssign, CtEq, CtGt, CtLt, CtSelect, Limb, Uint, UintRef};
+use crate::{Choice, CtAssign, CtEq, CtGt, CtLt, CtSelect, Limb, Uint, UintRef, word};
 use ctutils::{CtAssignSlice, CtEqSlice};
 
 impl<const LIMBS: usize> Uint<LIMBS> {
@@ -8,10 +8,11 @@ impl<const LIMBS: usize> Uint<LIMBS> {
     #[inline]
     pub(crate) const fn select(a: &Self, b: &Self, c: Choice) -> Self {
         let mut limbs = [Limb::ZERO; LIMBS];
+        let mask = word::choice_to_mask(c);
 
         let mut i = 0;
         while i < LIMBS {
-            limbs[i] = Limb::select(a.limbs[i], b.limbs[i], c);
+            limbs[i] = Limb::select_with_mask(a.limbs[i], b.limbs[i], mask);
             i += 1;
         }
 
@@ -24,8 +25,9 @@ impl<const LIMBS: usize> Uint<LIMBS> {
         let mut i = 0;
         let a = a.as_mut_limbs();
         let b = b.as_mut_limbs();
+        let mask = word::choice_to_mask(c);
         while i < LIMBS {
-            Limb::ct_conditional_swap(&mut a[i], &mut b[i], c);
+            Limb::ct_conditional_swap_with_mask(&mut a[i], &mut b[i], mask);
             i += 1;
         }
     }

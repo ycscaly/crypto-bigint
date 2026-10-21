@@ -1,5 +1,5 @@
 use super::UintRef;
-use crate::{Choice, Limb};
+use crate::{Choice, Limb, word};
 
 impl UintRef {
     /// Perform an in-place carrying add of a limb, returning the carried limb value.
@@ -77,10 +77,11 @@ impl UintRef {
             self.limbs.len() >= rhs.len(),
             "length mismatch in conditional_add_assign_slice"
         );
+        let mask = word::choice_to_mask(choice);
         let mut i = 0;
         while i < rhs.len() {
             (self.limbs[i], carry) =
-                self.limbs[i].carrying_add(Limb::select(Limb::ZERO, rhs[i], choice), carry);
+                self.limbs[i].carrying_add(Limb::select_with_mask(Limb::ZERO, rhs[i], mask), carry);
             i += 1;
         }
         while i < self.limbs.len() {

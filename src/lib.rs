@@ -160,7 +160,11 @@ pub use crate::{
     checked::Checked,
     encoding::ByteOrder,
     encoding::*,
-    int::{types::*, *},
+    int::{
+        gcd::{IntXgcdOutput, NonZeroIntXgcdOutput, OddIntXgcdOutput},
+        types::*,
+        *,
+    },
     jacobi::JacobiSymbol,
     limb::{Limb, nlimbs},
     non_zero::*,
@@ -169,6 +173,7 @@ pub use crate::{
     uint::{
         div_limb::{Reciprocal, div3by2_rc9},
         encoding::{EncodedUint, TryFromSliceError},
+        gcd::{NonZeroUintXgcdOutput, OddUintXgcdOutput, UintXgcdOutput},
         ref_type::UintRef,
         *,
     },

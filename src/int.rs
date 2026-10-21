@@ -11,7 +11,7 @@ mod div;
 mod div_unsigned;
 mod encoding;
 mod from;
-mod gcd;
+pub(crate) mod gcd;
 mod invert_mod;
 mod mod_symbol;
 mod mul;

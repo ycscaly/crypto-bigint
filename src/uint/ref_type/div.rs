@@ -307,7 +307,8 @@ impl UintRef {
             if VARTIME && done.to_bool() {
                 break;
             }
-            quo = word::select(quo, 0, done);
+            let done_mask = word::choice_to_mask(done);
+            quo = word::select_with_mask(quo, 0, done_mask);
 
             // Subtract q*divisor from the dividend
             let borrow = {
@@ -339,9 +340,9 @@ impl UintRef {
             };
 
             // Store the quotient within dividend and set x_hi to the current highest word
-            x_hi = Limb::select(x.limbs[xi], x_hi, done);
-            x.limbs[xi] = Limb::select(Limb(quo), x.limbs[xi], done);
-            x_xi = Limb::select(x.limbs[xi - 1], x_xi, done);
+            x_hi = Limb::select_with_mask(x.limbs[xi], x_hi, done_mask);
+            x.limbs[xi] = Limb::select_with_mask(Limb(quo), x.limbs[xi], done_mask);
+            x_xi = Limb::select_with_mask(x.limbs[xi - 1], x_xi, done_mask);
             xi -= 1;
         }
 
@@ -479,7 +480,8 @@ impl UintRef {
             if VARTIME && done.to_bool() {
                 break;
             }
-            quo = word::select(quo, 0, done);
+            let done_mask = word::choice_to_mask(done);
+            quo = word::select_with_mask(quo, 0, done_mask);
 
             // Subtract q*divisor from the dividend
             let borrow = {
@@ -521,8 +523,8 @@ impl UintRef {
                 }
                 x.limbs[0] = x_lo.limbs[extra_limbs];
             } else {
-                x_hi = Limb::select(x.limbs[xi], x_hi, done);
-                x_xi = Limb::select(x.limbs[xi - 1], x_xi, done);
+                x_hi = Limb::select_with_mask(x.limbs[xi], x_hi, done_mask);
+                x_xi = Limb::select_with_mask(x.limbs[xi - 1], x_xi, done_mask);
                 xi -= 1;
             }
         }
@@ -703,11 +705,13 @@ impl UintRef {
             }
 
             // Compute the quotient limb that will clear the low dividend limb
-            let quo = Limb::select(x.limbs[xi].wrapping_mul(y_inv), x.limbs[xi], done);
+            let done_mask = word::choice_to_mask(done);
+            let quo =
+                Limb::select_with_mask(x.limbs[xi].wrapping_mul(y_inv), x.limbs[xi], done_mask);
             x.limbs[xi] = quo;
 
             if !VARTIME {
-                zero_hi = zero_hi.and(Limb::select(Limb::ZERO, quo, done).is_zero());
+                zero_hi = zero_hi.and(Limb::select_with_mask(Limb::ZERO, quo, done_mask).is_zero());
             }
 
             let (_, mut carry) = quo.widening_mul(y.limbs[0]);

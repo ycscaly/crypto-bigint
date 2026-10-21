@@ -121,7 +121,18 @@ pub(crate) const fn choice_from_wide_nz(value: WideWord) -> Choice {
 /// Return `b` if `self` is truthy, otherwise return `a`.
 #[inline]
 pub(crate) const fn select(a: Word, b: Word, choice: Choice) -> Word {
-    a ^ (choice_to_mask(choice) & (a ^ b))
+    select_with_mask(a, b, choice_to_mask(choice))
+}
+
+/// Return `b` if `mask` is `Word::MAX`, and `a` if `mask` is `0`.
+///
+/// `mask` is meant to come from [`choice_to_mask`], whose optimization barrier hides the
+/// mask's origin from the compiler. A loop that selects many words on the same choice computes
+/// the mask once, before the loop, and calls this for each word: every word is then selected
+/// with an opaque mask, while the barrier runs once rather than once per word.
+#[inline]
+pub(crate) const fn select_with_mask(a: Word, b: Word, mask: Word) -> Word {
+    a ^ (mask & (a ^ b))
 }
 
 /// Return `b` if `self` is truthy, otherwise return `a`.

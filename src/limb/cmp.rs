@@ -61,7 +61,7 @@ impl PartialEq for Limb {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Choice, Limb};
+    use crate::{Choice, Limb, word};
     use core::cmp::Ordering;
 
     #[test]
@@ -90,11 +90,11 @@ mod tests {
         let mut a = Limb::MAX;
         let mut b = Limb::ZERO;
 
-        Limb::ct_conditional_swap(&mut a, &mut b, Choice::FALSE);
+        Limb::ct_conditional_swap_with_mask(&mut a, &mut b, word::choice_to_mask(Choice::FALSE));
         assert_eq!(a, Limb::MAX);
         assert_eq!(b, Limb::ZERO);
 
-        Limb::ct_conditional_swap(&mut a, &mut b, Choice::TRUE);
+        Limb::ct_conditional_swap_with_mask(&mut a, &mut b, word::choice_to_mask(Choice::TRUE));
         assert_eq!(a, Limb::ZERO);
         assert_eq!(b, Limb::MAX);
     }

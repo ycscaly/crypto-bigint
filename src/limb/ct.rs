@@ -1,21 +1,32 @@
 //! Constant-time support: impls of `Ct*` traits and constant-time `const fn` operations.
 
-use crate::{Choice, CtAssign, CtEq, CtGt, CtLt, CtSelect, Limb, word};
+use crate::{Choice, CtAssign, CtEq, CtGt, CtLt, CtSelect, Limb, Word, word};
 use ctutils::{CtAssignSlice, CtEqSlice};
 
 impl Limb {
     /// Return `b` if `c` is truthy, otherwise return `a`.
     #[inline]
     pub(crate) const fn select(a: Self, b: Self, c: Choice) -> Self {
-        Self(word::select(a.0, b.0, c))
+        Self::select_with_mask(a, b, word::choice_to_mask(c))
     }
 
-    /// Swap the values of `a` and `b` if `c` is truthy, otherwise do nothing.
+    /// Return `b` if `mask` is `Word::MAX`, and `a` if `mask` is `0`.
+    ///
+    /// For loops over limbs that all select on the same choice: compute the mask once with
+    /// [`word::choice_to_mask`] before the loop. See [`word::select_with_mask`].
     #[inline]
-    pub(crate) const fn ct_conditional_swap(a: &mut Self, b: &mut Self, c: Choice) {
+    pub(crate) const fn select_with_mask(a: Self, b: Self, mask: Word) -> Self {
+        Self(word::select_with_mask(a.0, b.0, mask))
+    }
+
+    /// Swap the values of `a` and `b` if `mask` is `Word::MAX`, and do nothing if it is `0`.
+    ///
+    /// See [`Limb::select_with_mask`].
+    #[inline]
+    pub(crate) const fn ct_conditional_swap_with_mask(a: &mut Self, b: &mut Self, mask: Word) {
         (*a, *b) = (
-            Self(word::select(a.0, b.0, c)),
-            Self(word::select(b.0, a.0, c)),
+            Self(word::select_with_mask(a.0, b.0, mask)),
+            Self(word::select_with_mask(b.0, a.0, mask)),
         );
     }
 }

@@ -13,7 +13,7 @@ mod slice;
 mod sqrt;
 mod sub;
 
-use crate::{Choice, Limb, NonZero, Odd, Uint, Word};
+use crate::{Choice, Limb, NonZero, Odd, Uint, Word, word};
 use core::{
     fmt,
     ops::{Index, IndexMut},
@@ -124,9 +124,10 @@ impl UintRef {
     /// Conditionally assign all of the limbs to zero.
     #[inline(always)]
     pub const fn conditional_set_zero(&mut self, choice: Choice) {
+        let mask = word::choice_to_mask(choice);
         let mut i = 0;
         while i < self.nlimbs() {
-            self.limbs[i] = Limb::select(self.limbs[i], Limb::ZERO, choice);
+            self.limbs[i] = Limb::select_with_mask(self.limbs[i], Limb::ZERO, mask);
             i += 1;
         }
     }
@@ -141,9 +142,10 @@ impl UintRef {
     /// Conditionally assign all of the limbs to the maximum.
     #[inline]
     pub const fn conditional_set_max(&mut self, choice: Choice) {
+        let mask = word::choice_to_mask(choice);
         let mut i = 0;
         while i < self.nlimbs() {
-            self.limbs[i] = Limb::select(self.limbs[i], Limb::MAX, choice);
+            self.limbs[i] = Limb::select_with_mask(self.limbs[i], Limb::MAX, mask);
             i += 1;
         }
     }

@@ -57,6 +57,8 @@ mod array;
 pub(crate) mod boxed;
 #[cfg(feature = "rand_core")]
 mod rand;
+#[cfg(feature = "rand_core")]
+pub use rand::RandomModWordWidth;
 
 /// Stack-allocated big unsigned integer.
 ///

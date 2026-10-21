@@ -1,6 +1,7 @@
 //! Constant-time support: impls of `Ct*` traits and constant-time `const fn` operations.
 
 use crate::{Choice, CtAssign, CtEq, CtGt, CtLt, CtSelect, Limb, Uint, UintRef, word};
+use cmov::Cmov;
 use ctutils::{CtAssignSlice, CtEqSlice};
 
 impl<const LIMBS: usize> Uint<LIMBS> {
@@ -73,6 +74,25 @@ impl<const LIMBS: usize> CtSelect for Uint<LIMBS> {
     #[inline]
     fn ct_select(&self, other: &Self, choice: Choice) -> Self {
         Self::from_words(self.as_words().ct_select(other.as_words(), choice))
+    }
+
+    /// Swap `self` and `other` if `choice` is truthy, in one pass over the words.
+    ///
+    /// Each pair of words is exchanged with two conditional moves of the `cmov` crate, the same
+    /// instructions `ct_select` uses. The trait's default instead builds two full selected copies
+    /// and a temporary.
+    #[inline]
+    fn ct_swap(&mut self, other: &mut Self, choice: Choice) {
+        let condition = choice.to_u8();
+        let a = self.as_mut_words();
+        let b = other.as_mut_words();
+        let mut i = 0;
+        while i < LIMBS {
+            let a_word = a[i];
+            a[i].cmovnz(&b[i], condition);
+            b[i].cmovnz(&a_word, condition);
+            i += 1;
+        }
     }
 }
 
@@ -176,5 +196,18 @@ mod tests {
 
         let select_1 = U128::ct_select(&a, &b, Choice::TRUE);
         assert_eq!(b, select_1);
+    }
+
+    #[test]
+    fn ct_swap() {
+        let a = U128::from_be_hex("00002222444466668888AAAACCCCEEEE");
+        let b = U128::from_be_hex("11113333555577779999BBBBDDDDFFFF");
+
+        let (mut x, mut y) = (a, b);
+        U128::ct_swap(&mut x, &mut y, Choice::FALSE);
+        assert_eq!((x, y), (a, b));
+
+        U128::ct_swap(&mut x, &mut y, Choice::TRUE);
+        assert_eq!((x, y), (b, a));
     }
 }

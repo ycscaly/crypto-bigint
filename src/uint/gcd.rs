@@ -228,8 +228,11 @@ impl<const LIMBS: usize> OddUint<LIMBS> {
     }
 }
 
+/// Output of the extended GCD, with the GCD typed as the name says.
 pub type UintXgcdOutput<const LIMBS: usize> = XgcdOutput<LIMBS, Uint<LIMBS>>;
+/// Output of the extended GCD, with the GCD typed as the name says.
 pub type NonZeroUintXgcdOutput<const LIMBS: usize> = XgcdOutput<LIMBS, NonZeroUint<LIMBS>>;
+/// Output of the extended GCD, with the GCD typed as the name says.
 pub type OddUintXgcdOutput<const LIMBS: usize> = XgcdOutput<LIMBS, OddUint<LIMBS>>;
 
 /// Container for the processed output of the Binary XGCD algorithm.

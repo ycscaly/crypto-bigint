@@ -233,6 +233,7 @@ name = "crypto-bigint"
 version = "0.7.5"
 dependencies = [
  "chacha20",
+ "cmov",
  "cpubits",
  "criterion",
  "ctutils",

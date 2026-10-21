@@ -6,7 +6,7 @@ use ctutils::{CtAssignSlice, CtEqSlice};
 impl Limb {
     /// Return `b` if `c` is truthy, otherwise return `a`.
     #[inline]
-    pub(crate) const fn select(a: Self, b: Self, c: Choice) -> Self {
+    pub const fn select(a: Self, b: Self, c: Choice) -> Self {
         Self::select_with_mask(a, b, word::choice_to_mask(c))
     }
 

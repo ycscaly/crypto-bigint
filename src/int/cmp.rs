@@ -8,7 +8,7 @@ use core::cmp::Ordering;
 impl<const LIMBS: usize> Int<LIMBS> {
     /// Swap `a` and `b` if `c` is truthy, otherwise, do nothing.
     #[inline]
-    pub(crate) const fn conditional_swap(a: &mut Self, b: &mut Self, c: Choice) {
+    pub const fn conditional_swap(a: &mut Self, b: &mut Self, c: Choice) {
         Uint::conditional_swap(&mut a.0, &mut b.0, c);
     }
 
@@ -26,13 +26,13 @@ impl<const LIMBS: usize> Int<LIMBS> {
 
     /// Returns the truthy value if `self < rhs` and the falsy value otherwise.
     #[inline]
-    pub(crate) const fn lt(lhs: &Self, rhs: &Self) -> Choice {
+    pub const fn lt(lhs: &Self, rhs: &Self) -> Choice {
         Uint::lt(&lhs.invert_msb().0, &rhs.invert_msb().0)
     }
 
     /// Returns the truthy value if `self > rhs` and the falsy value otherwise.
     #[inline]
-    pub(crate) const fn gt(lhs: &Self, rhs: &Self) -> Choice {
+    pub const fn gt(lhs: &Self, rhs: &Self) -> Choice {
         Uint::gt(&lhs.invert_msb().0, &rhs.invert_msb().0)
     }
 

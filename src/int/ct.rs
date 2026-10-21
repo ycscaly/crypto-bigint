@@ -6,7 +6,7 @@ use ctutils::{CtAssignSlice, CtEqSlice};
 impl<const LIMBS: usize> Int<LIMBS> {
     /// Return `b` if `c` is truthy, otherwise return `a`.
     #[inline]
-    pub(crate) const fn select(a: &Self, b: &Self, c: Choice) -> Self {
+    pub const fn select(a: &Self, b: &Self, c: Choice) -> Self {
         Self(Uint::select(&a.0, &b.0, c))
     }
 }

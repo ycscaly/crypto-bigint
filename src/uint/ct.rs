@@ -7,7 +7,7 @@ use ctutils::{CtAssignSlice, CtEqSlice};
 impl<const LIMBS: usize> Uint<LIMBS> {
     /// Return `b` if `c` is truthy, otherwise return `a`.
     #[inline]
-    pub(crate) const fn select(a: &Self, b: &Self, c: Choice) -> Self {
+    pub const fn select(a: &Self, b: &Self, c: Choice) -> Self {
         let mut limbs = [Limb::ZERO; LIMBS];
         let mask = word::choice_to_mask(c);
 
@@ -22,7 +22,7 @@ impl<const LIMBS: usize> Uint<LIMBS> {
 
     /// Swap `a` and `b` if `c` is truthy, otherwise, do nothing.
     #[inline]
-    pub(crate) const fn conditional_swap(a: &mut Self, b: &mut Self, c: Choice) {
+    pub const fn conditional_swap(a: &mut Self, b: &mut Self, c: Choice) {
         let mut i = 0;
         let a = a.as_mut_limbs();
         let b = b.as_mut_limbs();

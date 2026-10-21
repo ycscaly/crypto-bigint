@@ -9,8 +9,8 @@ use criterion::{
     BatchSize, BenchmarkGroup, BenchmarkId, Criterion, criterion_group, criterion_main,
 };
 use crypto_bigint::{
-    Limb, NonZero, Odd, OddUint, Random, RandomBits, RandomMod, Reciprocal, U128, U256, U512,
-    U1024, U2048, U4096, U8192, Uint,
+    Choice, Limb, NonZero, Odd, OddUint, Random, RandomBits, RandomMod, Reciprocal, U128, U256,
+    U512, U1024, U2048, U4096, U8192, Uint, ctutils::CtSelect,
 };
 use rand_core::{Rng, SeedableRng};
 
@@ -1119,6 +1119,37 @@ fn bench_root(c: &mut Criterion) {
     });
 }
 
+fn ct_bench<const LIMBS: usize>(group: &mut BenchmarkGroup<'_, WallTime>, _x: Uint<LIMBS>) {
+    let mut rng = make_rng();
+    let a = Uint::<LIMBS>::random_from_rng(&mut rng);
+    let b = Uint::<LIMBS>::random_from_rng(&mut rng);
+
+    group.bench_function(BenchmarkId::new("ct_select", LIMBS), |bench| {
+        bench.iter(|| Uint::ct_select(black_box(&a), black_box(&b), black_box(Choice::TRUE)))
+    });
+
+    group.bench_function(BenchmarkId::new("ct_swap", LIMBS), |bench| {
+        bench.iter_batched(
+            || (a, b),
+            |(mut x, mut y)| {
+                x.ct_swap(&mut y, black_box(Choice::TRUE));
+                (x, y)
+            },
+            BatchSize::SmallInput,
+        )
+    });
+}
+
+fn bench_ct(c: &mut Criterion) {
+    let mut group = c.benchmark_group("constant-time selection");
+
+    ct_bench(&mut group, U256::ZERO);
+    ct_bench(&mut group, U1024::ZERO);
+    ct_bench(&mut group, U2048::ZERO);
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_random,
@@ -1130,6 +1161,7 @@ criterion_group!(
     bench_mod_symbols,
     bench_shl,
     bench_shr,
+    bench_ct,
     bench_invert_mod,
     bench_sqrt,
     bench_root,

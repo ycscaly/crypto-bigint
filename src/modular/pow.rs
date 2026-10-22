@@ -54,6 +54,10 @@ where
     U: Unsigned,
     <U::Monty as Monty>::Multiplier<'a>: AmmMultiplier<'a>,
 {
+    // Bits above the exponent's width are zero; clamp so that no limb index goes out of range
+    // (RustCrypto/crypto-bigint#1273).
+    let exponent_bits = exponent_bits.min(exponent.bits_precision());
+
     let one = U::Monty::one(params.clone()).as_montgomery().clone();
 
     if exponent_bits == 0 {
@@ -135,6 +139,14 @@ pub const fn multi_exponentiate_montgomery_form_array<
     one: &Uint<LIMBS>,
     mod_neg_inv: Limb,
 ) -> Uint<LIMBS> {
+    // Bits above the exponent's width are zero; clamp so that no limb index goes out of range
+    // (RustCrypto/crypto-bigint#1273).
+    let exponent_bits = if exponent_bits > Uint::<RHS_LIMBS>::BITS {
+        Uint::<RHS_LIMBS>::BITS
+    } else {
+        exponent_bits
+    };
+
     if exponent_bits == 0 {
         return *one; // 1 in Montgomery form
     }
@@ -172,6 +184,10 @@ pub fn multi_exponentiate_montgomery_form_slice<const LIMBS: usize, const RHS_LI
     one: &Uint<LIMBS>,
     mod_neg_inv: Limb,
 ) -> Uint<LIMBS> {
+    // Bits above the exponent's width are zero; clamp so that no limb index goes out of range
+    // (RustCrypto/crypto-bigint#1273).
+    let exponent_bits = exponent_bits.min(Uint::<RHS_LIMBS>::BITS);
+
     if exponent_bits == 0 {
         return *one; // 1 in Montgomery form
     }
@@ -270,4 +286,104 @@ const fn multi_exponentiate_montgomery_form_internal<const LIMBS: usize, const R
     }
 
     z
+}
+
+#[cfg(test)]
+mod tests {
+    use super::multi_exponentiate_montgomery_form_array;
+    #[cfg(feature = "alloc")]
+    use super::{multi_exponentiate_montgomery_form_slice, pow_montgomery_form_amm};
+    #[cfg(feature = "alloc")]
+    use crate::{
+        BoxedUint,
+        modular::{BoxedMontyForm, BoxedMontyParams},
+    };
+    use crate::{
+        Odd, U128,
+        modular::{MontyForm, MontyParams},
+    };
+
+    fn params() -> MontyParams<{ U128::LIMBS }> {
+        MontyParams::new_vartime(Odd::new(U128::from_u8(101)).unwrap())
+    }
+
+    /// RustCrypto/crypto-bigint#1273: an `exponent_bits` above the exponent's width used to index
+    /// a limb out of range; the missing high bits are zero, so the result must equal the one for
+    /// the exponent's full width.
+    #[test]
+    fn pow_bounded_exp_clamps_oversized_exponent_bits() {
+        let base = MontyForm::new(&U128::from_u8(7), params());
+        let exponent = U128::from_u8(3);
+        assert_eq!(
+            base.pow_bounded_exp(&exponent, U128::BITS + 1),
+            base.pow(&exponent)
+        );
+        assert_eq!(
+            base.pow_bounded_exp(&exponent, u32::MAX),
+            base.pow(&exponent)
+        );
+    }
+
+    /// The almost-Montgomery path is reached through the boxed form only.
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn pow_montgomery_form_amm_clamps_oversized_exponent_bits() {
+        let params = BoxedMontyParams::new_vartime(Odd::new(BoxedUint::from(101u8)).unwrap());
+        let base = BoxedUint::from(7u8);
+        let exponent = BoxedUint::from(3u8);
+        let expected =
+            pow_montgomery_form_amm(&base, &exponent, exponent.bits_precision(), &params);
+        let actual =
+            pow_montgomery_form_amm(&base, &exponent, exponent.bits_precision() + 1, &params);
+        assert_eq!(actual, expected);
+
+        let base = BoxedMontyForm::new(base, params);
+        assert_eq!(
+            base.pow_bounded_exp(&exponent, exponent.bits_precision() + 1),
+            base.pow(&exponent)
+        );
+    }
+
+    #[test]
+    fn multi_exponentiate_montgomery_form_array_clamps_oversized_exponent_bits() {
+        let params = params();
+        let bases_and_exponents = [(U128::from_u8(7), U128::from_u8(3))];
+        let expected = multi_exponentiate_montgomery_form_array(
+            &bases_and_exponents,
+            U128::BITS,
+            params.modulus(),
+            params.one(),
+            params.mod_neg_inv(),
+        );
+        let actual = multi_exponentiate_montgomery_form_array(
+            &bases_and_exponents,
+            U128::BITS + 1,
+            params.modulus(),
+            params.one(),
+            params.mod_neg_inv(),
+        );
+        assert_eq!(actual, expected);
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn multi_exponentiate_montgomery_form_slice_clamps_oversized_exponent_bits() {
+        let params = params();
+        let bases_and_exponents = [(U128::from_u8(7), U128::from_u8(3))];
+        let expected = multi_exponentiate_montgomery_form_slice(
+            &bases_and_exponents,
+            U128::BITS,
+            params.modulus(),
+            params.one(),
+            params.mod_neg_inv(),
+        );
+        let actual = multi_exponentiate_montgomery_form_slice(
+            &bases_and_exponents,
+            U128::BITS + 1,
+            params.modulus(),
+            params.one(),
+            params.mod_neg_inv(),
+        );
+        assert_eq!(actual, expected);
+    }
 }

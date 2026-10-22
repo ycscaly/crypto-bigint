@@ -364,21 +364,32 @@ pub const fn wrapping_mul(lhs: &UintRef, rhs: &UintRef, out: &mut UintRef, add: 
             };
             let (y0, y1) = y.leading(y_len).split_at(LIMBS);
 
-            let z0 = widening_mul_fixed::<LIMBS, LIMBS>(x0, y0);
             let (assign, tail) = out.split_at_mut(if out.nlimbs() < LIMBS * 2 {
                 out.nlimbs()
             } else {
                 LIMBS * 2
             });
-            let (lo, hi) = assign.split_at_mut(LIMBS);
-            let mut carry = if add {
-                let mut carry = lo.carrying_add_assign(z0.0.as_uint_ref(), Limb::ZERO);
-                carry = hi.carrying_add_assign(z0.1.as_uint_ref().leading(hi.nlimbs()), carry);
-                tail.add_assign_limb(carry)
+
+            // When the output window cuts through `x0y0`, the omitted high limbs of `x0y0`
+            // still carry out of the window; only a schoolbook multiplication into the window
+            // returns that carry (RustCrypto/crypto-bigint#1305).
+            let mut carry = if assign.nlimbs() < LIMBS * 2 {
+                if !add {
+                    assign.fill(Limb::ZERO);
+                }
+                schoolbook::wrapping_mul_add(x0.as_slice(), y0.as_slice(), assign.as_mut_slice())
             } else {
-                lo.copy_from(z0.0.as_uint_ref());
-                hi.copy_from(z0.1.as_uint_ref().leading(hi.nlimbs()));
-                Limb::ZERO
+                let z0 = widening_mul_fixed::<LIMBS, LIMBS>(x0, y0);
+                let (lo, hi) = assign.split_at_mut(LIMBS);
+                if add {
+                    let mut carry = lo.carrying_add_assign(z0.0.as_uint_ref(), Limb::ZERO);
+                    carry = hi.carrying_add_assign(z0.1.as_uint_ref().leading(hi.nlimbs()), carry);
+                    tail.add_assign_limb(carry)
+                } else {
+                    lo.copy_from(z0.0.as_uint_ref());
+                    hi.copy_from(z0.1.as_uint_ref().leading(hi.nlimbs()));
+                    Limb::ZERO
+                }
             };
 
             // Add x1y•b if necessary.
@@ -578,6 +589,87 @@ mod tests {
                     UintRef::new(&wide[..size]),
                     "comparison failed n={n}, a={a}, b={b}, size={size}"
                 );
+            }
+        }
+    }
+
+    /// Upstream's regression test for RustCrypto/crypto-bigint#1305: a wide product truncated
+    /// inside the first partial product's window returned no carry for the omitted limbs.
+    fn assert_sparse_truncated_wide_split16_matches_schoolbook(add: bool) {
+        let mut lhs = [Limb::ZERO; 16];
+        let mut rhs = [Limb::ZERO; 17];
+        lhs[15] = Limb::MAX;
+        rhs[1] = Limb::MAX;
+        let mut karatsuba_out = [Limb::from(0x5au8); 17];
+        let mut schoolbook_out = karatsuba_out;
+
+        if !add {
+            schoolbook_out.fill(Limb::ZERO);
+        }
+
+        let karatsuba_carry = wrapping_mul(
+            UintRef::new(&lhs),
+            UintRef::new(&rhs),
+            UintRef::new_mut(&mut karatsuba_out),
+            add,
+        );
+        let schoolbook_carry = schoolbook::wrapping_mul_add(&lhs, &rhs, &mut schoolbook_out);
+
+        assert_eq!(karatsuba_out, schoolbook_out);
+        assert_eq!(karatsuba_carry, schoolbook_carry);
+    }
+
+    #[test]
+    fn truncated_wide_split16_carry_matches_schoolbook_when_overwriting() {
+        assert_sparse_truncated_wide_split16_matches_schoolbook(false);
+    }
+
+    #[test]
+    fn truncated_wide_split16_carry_matches_schoolbook_when_adding() {
+        assert_sparse_truncated_wide_split16_matches_schoolbook(true);
+    }
+
+    /// Limbs and carry of the Karatsuba product equal schoolbook's at every output width, for
+    /// random operands of random sizes, overwriting and adding. `wrapping_mul_sizes` above
+    /// compares the limbs only; the carry is what #1305 and #1309 got wrong.
+    #[test]
+    fn wrapping_mul_limbs_and_carry_match_schoolbook_at_every_truncation() {
+        const SIZE: usize = 72;
+        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(2);
+        for n in 0..60 {
+            let a = Uint::<SIZE>::random(&mut rng);
+            let b = Uint::<SIZE>::random(&mut rng);
+            let initial = Uint::<{ SIZE * 2 }>::random(&mut rng);
+            let size_a = 1 + rng.next_u32() as usize % SIZE;
+            let size_b = 1 + rng.next_u32() as usize % SIZE;
+            let a = &a.as_limbs()[..size_a];
+            let b = &b.as_limbs()[..size_b];
+            for size in 0..=size_a + size_b {
+                for add in [false, true] {
+                    let mut karatsuba_out = [Limb::ZERO; SIZE * 2];
+                    let mut schoolbook_out = [Limb::ZERO; SIZE * 2];
+                    if add {
+                        karatsuba_out.copy_from_slice(initial.as_limbs());
+                        schoolbook_out.copy_from_slice(initial.as_limbs());
+                    }
+                    let karatsuba_carry = wrapping_mul(
+                        UintRef::new(a),
+                        UintRef::new(b),
+                        UintRef::new_mut(&mut karatsuba_out[..size]),
+                        add,
+                    );
+                    let schoolbook_carry =
+                        schoolbook::wrapping_mul_add(a, b, &mut schoolbook_out[..size]);
+                    assert_eq!(
+                        karatsuba_out[..size],
+                        schoolbook_out[..size],
+                        "limbs differ: n={n}, size_a={size_a}, size_b={size_b}, size={size}, add={add}"
+                    );
+                    assert_eq!(
+                        karatsuba_carry, schoolbook_carry,
+                        "carry differs: n={n}, size_a={size_a}, size_b={size_b}, size={size}, add={add}"
+                    );
+                }
             }
         }
     }

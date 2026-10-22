@@ -187,7 +187,7 @@ impl WrappingMul for BoxedUint {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BoxedUint, Resize};
+    use crate::{BoxedUint, Limb, Resize};
 
     #[test]
     fn mul_zero_and_one() {
@@ -261,5 +261,23 @@ mod tests {
         assert_eq!(z.is_some().unwrap_u8(), 1);
         let m = BoxedUint::max(256).checked_square();
         assert_eq!(m.is_none().unwrap_u8(), 1);
+    }
+
+    /// Upstream's regression test for RustCrypto/crypto-bigint#1309, on rc.9's API: the largest
+    /// value whose square fits, and that value plus one, at every even limb count up to 4096 bits.
+    #[test]
+    fn overflow_check() {
+        for bits in (64..4096).step_by(2 * Limb::BITS as usize) {
+            // `2^(bits/2) - 1`, the largest value whose square fits in `bits`.
+            let one = BoxedUint::one_with_precision(bits);
+            let b = one.shl(bits >> 1).wrapping_sub(&one);
+            assert!(bool::from(b.checked_mul(&b).is_some()));
+            assert!(bool::from(b.checked_square().is_some()));
+            let b = b.wrapping_add(&BoxedUint::one_with_precision(bits));
+            assert!(bool::from(b.checked_mul(&b).is_none()));
+            assert!(bool::from(b.checked_square().is_none()));
+            assert!(b.saturating_mul(&b) == BoxedUint::max(bits));
+            assert!(b.saturating_square() == BoxedUint::max(bits));
+        }
     }
 }
